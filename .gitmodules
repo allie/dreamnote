@@ -1,0 +1,3 @@
+[submodule "lib/tictoc"]
+	path = lib/tictoc
+	url = https://github.com/nclack/tictoc

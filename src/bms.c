@@ -282,7 +282,6 @@ BMS* BMS_load(const char* path) {
 			int old_count = bms->measure_count;
 			bms->measure_count = measure_num + 1;
 			bms->measures = recalloc(bms->measures, sizeof(Measure*), old_count, bms->measure_count);
-			// bms->measures = realloc_zero(bms->measures, sizeof(Measure*) * old_count, sizeof(Measure*) * bms->measure_count);
 
 			Measure* measure = bms->measures[measure_num];
 

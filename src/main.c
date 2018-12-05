@@ -42,6 +42,7 @@ int main(int argc, char* argv[]) {
 
 	TicTocTimer clock = tic();
 	double dt = 0.0;
+	double timer = 0.0;
 
 	int running = 1;
 
@@ -53,6 +54,11 @@ int main(int argc, char* argv[]) {
 			if (e.type == SDL_QUIT) {
 				running = 0;
 			}
+		}
+
+		if (timer < 1) {
+			timer += dt;
+			continue;
 		}
 
 		BMS_step(bms, dt);

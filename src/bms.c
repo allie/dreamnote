@@ -7,6 +7,23 @@
 #include <string.h>
 #include <libgen.h>
 
+// Determines whether a channel number is a WAV channel or not
+static int is_wav_channel(int channel) {
+	return channel != 0 && // Retired channel
+		(channel < 2 || channel > 14) && // Settings channels
+		channel != 36 && // Reserved channel
+		channel != 72 && // Reserved channel
+		channel != 108 && // Reserved channel
+		channel != 144 && // Reserved channel
+		channel != 180 && // Reserved channel
+		channel != 216 && // Reserved channel
+		(channel < 252 || channel > 330) && // Reserved channels
+		channel != 331 && // BGM volume
+		channel != 332 && // KEY volume
+		channel != 333 && // TEXT
+		(channel < 360 || channel > 366); // More settings channels
+}
+
 // #PLAYER x
 static int parse_player(BMS* bms, char* command) {
 	if (stristr(command, "#PLAYER")) {
@@ -324,6 +341,7 @@ static int parse_line(BMS* bms, char* command) {
 
 		// Extract the message
 		char* message = command + strlen("#xxxyy:");
+		trim(message);
 
 		// Resize the measures array if need be
 		int old_count = bms->measure_count;
@@ -595,7 +613,7 @@ void BMS_step(BMS* bms, double dt) {
 		}
 
 		// Mix audio channels
-		if ((i >= CHANNEL_IIDX_KEY1 && i <= CHANNEL_IIDX_KEY7) || (i >= 0x16F && i <= 0x1D3)) {
+		if (is_wav_channel(i)) {
 			if (!object->activated && bms->wav_defs[object->id] != NULL) {
 				Mixer_add(bms->wav_defs[object->id]->data, bms->wav_defs[object->id]->size);
 				object->activated = 1;

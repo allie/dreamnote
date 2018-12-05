@@ -8,8 +8,18 @@
 #include <portaudio.h>
 #include "tictoc/tictoc.h"
 
-int main() {
-	BMS* bms = BMS_load("./felys/felys.bms");
+int main(int argc, char* argv[]) {
+	if (argc < 2) {
+		printf("No BMS file specified!\n");
+		return 0;
+	}
+
+	BMS* bms = BMS_load(argv[1]);
+
+	if (bms == NULL) {
+		printf("Error trying to play %s\n.", argv[1]);
+		return 0;
+	}
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		printf("SDL_Init error: %s\n", SDL_GetError());

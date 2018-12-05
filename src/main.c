@@ -9,7 +9,7 @@
 #include "tictoc/tictoc.h"
 
 int main() {
-	BMS* bms = BMS_load("felys.bms");
+	BMS* bms = BMS_load("./felys/felys.bms");
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		printf("SDL_Init error: %s\n", SDL_GetError());

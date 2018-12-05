@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <libgen.h>
 
 // #PLAYER x
 static int parse_player(BMS* bms, char* command) {
@@ -172,7 +173,11 @@ static int parse_wav(BMS* bms, char* command) {
 
 		// Create a new entry in the defs array
 		bms->wav_defs[id] = malloc(sizeof(WavDef));
-		bms->wav_defs[id]->file = strdup(command);
+		char file[1024];
+		strcpy(file, bms->directory);
+		strcat(file, "/");
+		strcat(file, command);
+		bms->wav_defs[id]->file = strdup(file);
 
 		// Open the file
 		float* buffer = NULL;
@@ -211,7 +216,11 @@ static int parse_bmp(BMS* bms, char* command) {
 
 		// Create a new entry in the defs array
 		bms->bmp_defs[id] = malloc(sizeof(BmpDef));
-		bms->bmp_defs[id]->file = strdup(command);
+		char file[1024];
+		strcpy(file, bms->directory);
+		strcat(file, "/");
+		strcat(file, command);
+		bms->bmp_defs[id]->file = strdup(file);
 		return 1;
 	}
 
@@ -437,7 +446,13 @@ BMS* BMS_load(const char* path) {
 
 	BMS* bms = malloc(sizeof(BMS));
 
+	// Copy the path in order to get basename and dirname
+	char file[1024];
+	strcpy(file, path);
+
 	// Initialize metadata fields
+	bms->file = strdup(basename(file));
+	bms->directory = strdup(dirname(file));
 	bms->play_type = PLAY_SINGLE;
 	bms->genre = DEFAULT_GENRE;
 	bms->title = DEFAULT_TITLE;
@@ -601,6 +616,12 @@ void BMS_free(BMS* bms) {
 	if (bms == NULL) {
 		return;
 	}
+
+	// Free the file name
+	free(bms->file);
+
+	// Free the directory name
+	free(bms->directory);
 
 	// Free subartists
 	if (bms->subartists != NULL) {

@@ -102,6 +102,8 @@ typedef struct {
 // A parsed BMS chart
 typedef struct {
 	// Info fields
+	char* file;
+	char* directory;
 	int play_type;
 	char* genre;
 	char* title;

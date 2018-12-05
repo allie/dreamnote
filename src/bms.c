@@ -160,7 +160,7 @@ static int parse_wav(BMS* bms, char* command) {
 		command += strlen("#WAV");
 
 		// Extract the base 36 ID (xx)
-		char id_base36[] = {command[0], command[1]};
+		char id_base36[] = {command[0], command[1], '\0'};
 		long id = strtol(id_base36, NULL, 36);
 
 		// Resize the defs array
@@ -203,7 +203,7 @@ static int parse_bmp(BMS* bms, char* command) {
 		command += strlen("#BMP");
 
 		// Extract the base 36 ID (xx)
-		char id_base36[] = {command[0], command[1]};
+		char id_base36[] = {command[0], command[1], '\0'};
 		long id = strtol(id_base36, NULL, 36);
 
 		// Resize the defs array
@@ -234,7 +234,7 @@ static int parse_text(BMS* bms, char* command) {
 		command += strlen("#TEXT");
 
 		// Extract the base 36 ID (xx)
-		char id_base36[] = {command[0], command[1]};
+		char id_base36[] = {command[0], command[1], '\0'};
 		long id = strtol(id_base36, NULL, 36);
 
 		// Resize the defs array
@@ -292,7 +292,7 @@ static int parse_bpmex(BMS* bms, char* command) {
 		command += strlen("#BPM");
 
 		// Extract the base 36 ID (xx)
-		char id_base36[] = {command[0], command[1]};
+		char id_base36[] = {command[0], command[1], '\0'};
 		long id = strtol(id_base36, NULL, 36);
 
 		// Resize the defs array
@@ -378,7 +378,7 @@ static int parse_line(BMS* bms, char* command) {
 			// Populate the object data with base 36 IDs
 			for (int i = 0; i < bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count; i++) {
 				// Extract the ID (zz)
-				char id_base36[] = {message[i * 2], message[i * 2 + 1]};
+				char id_base36[] = {message[i * 2], message[i * 2 + 1], '\0'};
 				long id = strtol(id_base36, NULL, 36);
 
 				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i] = malloc(sizeof(Object));
@@ -421,7 +421,7 @@ static int parse_line(BMS* bms, char* command) {
 			// Populate the object data with base 36 IDs
 			for (int i = 0; i < bms->measures[measure_num]->channels[channel_num]->object_count; i++) {
 				// Extract the ID (zz)
-				char id_base36[] = {message[i * 2], message[i * 2 + 1]};
+				char id_base36[] = {message[i * 2], message[i * 2 + 1], '\0'};
 				long id = strtol(id_base36, NULL, 36);
 
 				bms->measures[measure_num]->channels[channel_num]->objects[i] = malloc(sizeof(Object));

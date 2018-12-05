@@ -1,13 +1,15 @@
 #include "bms.h"
 #include "graphics.h"
+#include "mixer.h"
 
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <portaudio.h>
 #include "tictoc/tictoc.h"
 
 int main() {
-	BMS* bms = BMS_load("Faulty Sparkle/faultyANOTHER.bms");
+	BMS* bms = BMS_load("felys.bms");
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		printf("SDL_Init error: %s\n", SDL_GetError());
@@ -15,6 +17,16 @@ int main() {
 	}
 
 	if (!Graphics_init()) {
+		return 0;
+	}
+
+	PaError error = Pa_Initialize();
+	if (error != paNoError) {
+		printf("PortAudio error: %s\n", Pa_GetErrorText(error));
+		return 0;
+	}
+
+	if (!Mixer_init(44100, 256)) {
 		return 0;
 	}
 

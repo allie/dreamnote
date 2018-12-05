@@ -53,12 +53,33 @@ void* recalloc(void* array, size_t elem_size, int old_count, int new_count) {
 
 	return new_array;
 }
-void* realloc_zero(void* pBuffer, size_t oldSize, size_t newSize) {
-  void* pNew = realloc(pBuffer, newSize);
-  if ( newSize > oldSize && pNew ) {
-    size_t diff = newSize - oldSize;
-    void* pStart = ((char*)pNew) + oldSize;
-    memset(pStart, 0, diff);
-  }
-  return pNew;
+
+void* remove_null_elements(void* array, size_t elem_size, int* count) {
+	int actual_count = 0;
+
+	// Get an actual count of non-null elements
+	for (int i = 0; i < *count; i++) {
+		if (array + i * elem_size != NULL) {
+			actual_count++;
+		}
+	}
+
+	void* new_array = calloc(elem_size, actual_count);
+	int offset = 0;
+
+	for (int i = 0; i < *count; i++) {
+		if (array + i * elem_size != NULL) {
+			memcpy(new_array + (offset * elem_size), array, elem_size);
+			offset++;
+		}
+	}
+
+	free(array);
+	*count = actual_count;
+	return new_array;
+}
+
+// Returns the number of seconds in a measure at the given BPM and metre
+double measure_duration(double bpm, double metre) {
+	return 60.0 / bpm * 4 * metre;
 }

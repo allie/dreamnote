@@ -1,11 +1,56 @@
 #ifndef BMS_H
 #define BMS_H
 
+#include <stdlib.h>
+
 // Play types
 #define PLAY_SINGLE 1
 #define PLAY_COUPLE 2
 #define PLAY_DOUBLE 3
 #define PLAY_BATTLE 4
+
+// Common channels
+#define CHANNEL_BGM 0x01
+#define CHANNEL_METRE 0x02
+#define CHANNEL_BPM_CHANGE 0x03
+#define CHANNEL_BGA 0x04
+#define CHANNEL_POOR_CHANGE 0x06
+#define CHANNEL_LAYER 0x07
+#define CHANNEL_EXTENDED_BPM 0x08
+#define CHANNEL_STOP 0x09
+
+// BMS channels (IIDX-like)
+#define CHANNEL_IIDX_KEY1 0x25
+#define CHANNEL_IIDX_KEY2 0x26
+#define CHANNEL_IIDX_KEY3 0x27
+#define CHANNEL_IIDX_KEY4 0x28
+#define CHANNEL_IIDX_KEY5 0x29
+#define CHANNEL_IIDX_KEY6 0x2C
+#define CHANNEL_IIDX_KEY7 0x2D
+#define CHANNEL_IIDX_SCRATCH 0x2A
+
+// PMS channels (pop'n-like)
+#define CHANNEL_POPN_BUTTON1 0x11
+#define CHANNEL_POPN_BUTTON2 0x12
+#define CHANNEL_POPN_BUTTON3 0x13
+#define CHANNEL_POPN_BUTTON4 0x14
+#define CHANNEL_POPN_BUTTON5 0x15
+#define CHANNEL_POPN_BUTTON6 0x22
+#define CHANNEL_POPN_BUTTON7 0x23
+#define CHANNEL_POPN_BUTTON8 0x24
+#define CHANNEL_POPN_BUTTON9 0x25
+
+// O2Mania channels
+// Note: this is for O2Mania 1.2. Newer versions will use
+// the IIDX-style keys, determined by the presence of objects
+// in channel 19.
+#define CHANNEL_O2_P1_KEY1 0x16
+#define CHANNEL_O2_P1_KEY2 0x11
+#define CHANNEL_O2_P1_KEY3 0x12
+#define CHANNEL_O2_P1_KEY4 0x13
+#define CHANNEL_O2_P1_KEY5 0x14
+#define CHANNEL_O2_P1_KEY6 0x15
+#define CHANNEL_O2_P1_KEY7 0x18
 
 // Defaults
 #define DEFAULT_PLAYTYPE PLAY_SINGLE
@@ -19,43 +64,12 @@
 #define DEFAULT_RANK 0
 #define DEFAULT_TOTAL 160.0
 
-// BMS channels (IIDX-like)
-#define CHANNEL_BGM 1
-#define CHANNEL_TIME_SIGNATURE 2
-#define CHANNEL_BPM_CHANGE 3
-#define CHANNEL_BGA 4
-#define CHANNEL_POOR_CHANGE 6
-#define CHANNEL_LAYER 7
-#define CHANNEL_EXTENDED_BPM 8
-#define CHANNEL_STOP 9
-
-// PMS channels (pop'n-like)
-#define CHANNEL_POPN_BUTTON1 11
-#define CHANNEL_POPN_BUTTON2 12
-#define CHANNEL_POPN_BUTTON3 13
-#define CHANNEL_POPN_BUTTON4 14
-#define CHANNEL_POPN_BUTTON5 15
-#define CHANNEL_POPN_BUTTON6 22
-#define CHANNEL_POPN_BUTTON7 23
-#define CHANNEL_POPN_BUTTON8 24
-#define CHANNEL_POPN_BUTTON9 25
-
-// O2Mania channels
-// Note: this is for O2Mania 1.2. Newer versions will use
-// the IIDX-style keys, determined by the presence of objects
-// in channel 19.
-#define CHANNEL_O2_P1_KEY1 16
-#define CHANNEL_O2_P1_KEY2 11
-#define CHANNEL_O2_P1_KEY3 12
-#define CHANNEL_O2_P1_KEY4 13
-#define CHANNEL_O2_P1_KEY5 14
-#define CHANNEL_O2_P1_KEY6 15
-#define CHANNEL_O2_P1_KEY7 18
-
 // A wav object definition
 // #WAVxx <filename>
 typedef struct {
 	char* file;
+	float* data;
+	size_t size;
 } WavDef;
 
 // A bitmap object definition
@@ -67,6 +81,7 @@ typedef struct {
 // A channel object
 typedef struct {
 	int id;
+	int activated;
 } Object;
 
 // An internal representation of a single channel/column.
@@ -78,8 +93,10 @@ typedef struct {
 // An internal representation of one measure
 typedef struct {
 	Channel** channels;
+	Channel** bgm_channels;
 	int channel_count;
-	double timestamp;
+	int bgm_channel_count;
+	double metre;
 } Measure;
 
 // A parsed BMS chart
@@ -115,6 +132,10 @@ typedef struct {
 
 	// Helper fields
 	double elapsed;
+	double current_measure;
+	int current_measure_num;
+	double current_bpm;
+	double mps;
 } BMS;
 
 BMS* BMS_load(const char* path);

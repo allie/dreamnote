@@ -1,4 +1,5 @@
 #include "bms.h"
+#include "mixer.h"
 #include "util.h"
 
 #include <stdlib.h>
@@ -42,9 +43,6 @@ BMS* BMS_load(const char* path) {
 	bms->bpm_def_count = 0;
 	bms->measures = NULL;
 	bms->measure_count = 0;
-
-	// Initialize helpers
-	bms->elapsed = 0.0f;
 
 	// Iterate through each line and parse
 	char line[4096] = "";
@@ -168,6 +166,19 @@ BMS* BMS_load(const char* path) {
 			// Create a new entry in the defs array
 			bms->wav_defs[id] = malloc(sizeof(WavDef));
 			bms->wav_defs[id]->file = strdup(command);
+
+			// Open the file
+			float* buffer = NULL;
+			size_t size = 0;
+			
+			if (!Mixer_load_file(bms->wav_defs[id]->file, &buffer, &size)) {
+				printf("Could not open WAV%ld.\n", id);
+				return NULL;
+			}
+
+			// Extract the data
+			bms->wav_defs[id]->data = buffer;
+			bms->wav_defs[id]->size = size;
 		}
 
 		// #BMPxx <filename>
@@ -273,7 +284,7 @@ BMS* BMS_load(const char* path) {
 
 			// Extract the channel number
 			char channel_str[] = {command[4], command[5]};
-			long channel_num = strtol(channel_str, NULL, 10);
+			long channel_num = strtol(channel_str, NULL, 36);
 
 			// Extract the message
 			char* message = command + strlen("#xxxyy:");
@@ -283,57 +294,111 @@ BMS* BMS_load(const char* path) {
 			bms->measure_count = measure_num + 1;
 			bms->measures = recalloc(bms->measures, sizeof(Measure*), old_count, bms->measure_count);
 
-			Measure* measure = bms->measures[measure_num];
-
 			// If the measure doesn't exist, create it
 			if (bms->measures[measure_num] == NULL) {
 				bms->measures[measure_num] = malloc(sizeof(Measure));
 				bms->measures[measure_num]->channel_count = 0;
 				bms->measures[measure_num]->channels = NULL;
+				bms->measures[measure_num]->bgm_channel_count = 0;
+				bms->measures[measure_num]->bgm_channels = NULL;
+				bms->measures[measure_num]->metre = 1.0;
 			}
 
-			// Resize the channels array if need be
-			old_count = bms->measures[measure_num]->channel_count;
-			bms->measures[measure_num]->channel_count = channel_num + 1;
-			bms->measures[measure_num]->channels = recalloc(
-				bms->measures[measure_num]->channels,
-				sizeof(Channel*),
-				old_count,
-				bms->measures[measure_num]->channel_count
-			);
+			// Particular channel numbers are just used for changing settings
+			switch (channel_num) {
+				case CHANNEL_METRE:
+					bms->measures[measure_num]->metre = strtod(message, NULL);
+					continue;
 
-			Channel* channel = bms->measures[measure_num]->channels[channel_num];
-
-			// If the channel doesn't exist, create it
-			if (bms->measures[measure_num]->channels[channel_num] == NULL) {
-				bms->measures[measure_num]->channels[channel_num] = malloc(sizeof(Channel));
-				bms->measures[measure_num]->channels[channel_num]->objects = NULL;
+				default:
+					break;
 			}
 
-			// If an objects array already exists, free it so we can overwrite it
-			else if (bms->measures[measure_num]->channels[channel_num]->objects != NULL) {
-				free(bms->measures[measure_num]->channels[channel_num]->objects);
-				bms->measures[measure_num]->channels[channel_num]->objects = NULL;
+			// BGM channel can have nested channels of its own, so they are handled differently
+			if (channel_num == CHANNEL_BGM) {
+				// Incremement the BGM channel count and resize
+				int bgm_channel_index = bms->measures[measure_num]->bgm_channel_count;
+				bms->measures[measure_num]->bgm_channel_count++;
+				bms->measures[measure_num]->bgm_channels = recalloc(
+					bms->measures[measure_num]->bgm_channels,
+					sizeof(Channel*),
+					bgm_channel_index,
+					bms->measures[measure_num]->bgm_channel_count
+				);
+
+				// Create a new BGM channel for this measure
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index] = malloc(sizeof(Channel));
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects = NULL;
+
+				// Count the objects and allocate an array of objects for this channel
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count = strlen(message) / 2;
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects = calloc(
+					sizeof(Object*),
+					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count
+				);
+
+				// Populate the object data with base 36 IDs
+				for (int i = 0; i < bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count; i++) {
+					// Extract the ID (zz)
+					char id_base36[] = {message[i * 2], message[i * 2 + 1]};
+					long id = strtol(id_base36, NULL, 36);
+
+					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i] = malloc(sizeof(Object));
+					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i]->id = (int)id;
+					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i]->activated = 0;
+				}
 			}
+			// All other channels
+			else {
+				// Resize the channels array if need be
+				old_count = bms->measures[measure_num]->channel_count;
+				bms->measures[measure_num]->channel_count = channel_num + 1;
+				bms->measures[measure_num]->channels = recalloc(
+					bms->measures[measure_num]->channels,
+					sizeof(Channel*),
+					old_count,
+					bms->measures[measure_num]->channel_count
+				);
 
-			// Count the objects and allocate an array of objects for this channel
-			bms->measures[measure_num]->channels[channel_num]->object_count = strlen(message) / 2;
-			bms->measures[measure_num]->channels[channel_num]->objects = calloc(
-				sizeof(Object*),
-				bms->measures[measure_num]->channels[channel_num]->object_count
-			);
+				// If the channel doesn't exist, create it
+				if (bms->measures[measure_num]->channels[channel_num] == NULL) {
+					bms->measures[measure_num]->channels[channel_num] = malloc(sizeof(Channel));
+					bms->measures[measure_num]->channels[channel_num]->objects = NULL;
+				}
 
-			// Populate the object data with base 36 IDs
-			for (int i = 0; i < bms->measures[measure_num]->channels[channel_num]->object_count; i++) {
-				// Extract the ID (zz)
-				char id_base36[] = {message[i * 2], message[i * 2 + 1]};
-				long id = strtol(id_base36, NULL, 36);
+				// If an objects array already exists, free it so we can overwrite it
+				if (bms->measures[measure_num]->channels[channel_num]->objects != NULL) {
+					free(bms->measures[measure_num]->channels[channel_num]->objects);
+					bms->measures[measure_num]->channels[channel_num]->objects = NULL;
+				}
 
-				bms->measures[measure_num]->channels[channel_num]->objects[i] = malloc(sizeof(Object));
-				bms->measures[measure_num]->channels[channel_num]->objects[i]->id = (int)id;
+				// Count the objects and allocate an array of objects for this channel
+				bms->measures[measure_num]->channels[channel_num]->object_count = strlen(message) / 2;
+				bms->measures[measure_num]->channels[channel_num]->objects = calloc(
+					sizeof(Object*),
+					bms->measures[measure_num]->channels[channel_num]->object_count
+				);
+
+				// Populate the object data with base 36 IDs
+				for (int i = 0; i < bms->measures[measure_num]->channels[channel_num]->object_count; i++) {
+					// Extract the ID (zz)
+					char id_base36[] = {message[i * 2], message[i * 2 + 1]};
+					long id = strtol(id_base36, NULL, 36);
+
+					bms->measures[measure_num]->channels[channel_num]->objects[i] = malloc(sizeof(Object));
+					bms->measures[measure_num]->channels[channel_num]->objects[i]->id = (int)id;
+					bms->measures[measure_num]->channels[channel_num]->objects[i]->activated = 0;
+				}
 			}
 		}
 	}
+
+	// Initialize helpers
+	bms->elapsed = 0.0;
+	bms->current_measure = 0.0;
+	bms->current_measure_num = 1;
+	bms->current_bpm = bms->init_bpm;
+	bms->mps = 1 / measure_duration(bms->current_bpm, 1.0);
 
 	return bms;
 }
@@ -342,10 +407,90 @@ BMS* BMS_load(const char* path) {
 void BMS_step(BMS* bms, double dt) {
 	bms->elapsed += dt;
 
-	// Stuff
+	double last_measure = bms->current_measure;
+	int last_measure_index = (int)last_measure;
+	// double last_measure_part = last_measure - last_measure_index;
+
+	bms->current_measure += bms->mps * dt;
+	int measure_index = (int)bms->current_measure;
+	double measure_part = bms->current_measure - measure_index;
+
+	while (bms->measures[measure_index] == NULL) {
+		bms->current_measure += 1.0;
+		measure_index++;
+		last_measure_index++;
+	}
+
+	Measure* measure = bms->measures[measure_index];
+
+	// Process objects in this measure's BGM channel
+	for (int i = 0; i < measure->bgm_channel_count; i++) {
+		Channel* channel = measure->bgm_channels[i];
+
+		if (measure->bgm_channels[i] == NULL) {
+			continue;
+		}
+
+		int object_index = (int)(measure_part * channel->object_count);
+
+		Object* object = channel->objects[object_index];
+
+		if (object == NULL) {
+			printf("Object is null!\n");
+			continue;
+		}
+
+		// Don't process rests
+		if (object->id == 0) {
+			continue;
+		}
+
+		if (!object->activated && bms->wav_defs[object->id] != NULL) {
+			Mixer_add(bms->wav_defs[object->id]->data, bms->wav_defs[object->id]->size);
+			object->activated = 1;
+		}
+	}
+
+	// Process objects in all other channels in the current measure
+	for (int i = 0; i < measure->channel_count; i++) {
+		Channel* channel = measure->channels[i];
+
+		if (measure->channels[i] == NULL) {
+			continue;
+		}
+
+		int object_index = (int)(measure_part * channel->object_count);
+
+		Object* object = channel->objects[object_index];
+
+		if (object == NULL) {
+			printf("Object is null!\n");
+			continue;
+		}
+
+		// Don't process rests
+		if (object->id == 0) {
+			continue;
+		}
+
+		// Mix audio channels
+		if ((i >= CHANNEL_IIDX_KEY1 && i <= CHANNEL_IIDX_KEY7) || (i >= 0x16F && i <= 0x1D3)) {
+			if (!object->activated && bms->wav_defs[object->id] != NULL) {
+				Mixer_add(bms->wav_defs[object->id]->data, bms->wav_defs[object->id]->size);
+				object->activated = 1;
+			}
+		}
+	}
+
+	// If this is a new measure, recalculate some things
+	if (measure_index > last_measure_index) {
+		bms->current_measure_num++;
+		bms->mps = 1 / measure_duration(bms->current_bpm, measure->metre);
+	}
 }
 
 // Free all memory used by a BMS structure
+// TODO: need to add BGM channels
 void BMS_free(BMS* bms) {
 	if (bms == NULL) {
 		return;

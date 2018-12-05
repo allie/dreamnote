@@ -19,7 +19,7 @@ static PaStream* stream = NULL;
 static Channel* channels[NUM_CHANNELS];
 static int sample_rate;
 static int buffer_size;
-static int state = MIXER_PLAYING;
+// static int state = MIXER_PLAYING;
 static float volume = 0.5f;
 
 // Mix the samples of every channel into one

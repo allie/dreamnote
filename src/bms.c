@@ -6,6 +6,427 @@
 #include <stdio.h>
 #include <string.h>
 
+// #PLAYER x
+static int parse_player(BMS* bms, char* command) {
+	if (stristr(command, "#PLAYER")) {
+		command += strlen("#PLAYER");
+		trim(command);
+		long value = strtol(command, NULL, 10);
+
+		if (value >= PLAY_SINGLE && value <= PLAY_BATTLE) {
+			bms->play_type = (int)value;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+// #GENRE x
+// Due to a typo at some point in BMS history, GENLE is also accepted
+static int parse_genre(BMS* bms, char* command) {
+	if (stristr(command, "#GENRE") || stristr(command, "#GENLE")) {
+		command += strlen("#GENRE");
+		trim(command);
+		bms->genre = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #ARTIST x
+static int parse_artist(BMS* bms, char* command) {
+	if (stristr(command, "#ARTIST")) {
+		command += strlen("#ARTIST");
+		trim(command);
+		bms->artist = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #SUBARTIST x
+static int parse_subartist(BMS* bms, char* command) {
+	if (stristr(command, "#SUBARTIST")) {
+		command += strlen("#SUBARTIST");
+
+		// Resize the defs array
+		int old_count = bms->subartist_count;
+		bms->subartist_count++;
+		bms->subartists = recalloc(bms->subartists, sizeof(char*), old_count, bms->subartist_count);
+
+		trim(command);
+
+		// Create a new entry in the defs array
+		bms->subartists[old_count] = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #MAKER x
+static int parse_maker(BMS* bms, char* command) {
+	if (stristr(command, "#MAKER")) {
+		command += strlen("#MAKER");
+		trim(command);
+		bms->maker = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #TITLE x
+static int parse_title(BMS* bms, char* command) {
+	if (stristr(command, "#TITLE")) {
+		command += strlen("#TITLE");
+		trim(command);
+		bms->title = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #SUBTITLE x
+static int parse_subtitle(BMS* bms, char* command) {
+	if (stristr(command, "#SUBTITLE")) {
+		command += strlen("#SUBTITLE");
+		trim(command);
+		bms->subtitle = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #BPM x
+// Not to be confused with #BPMxx yy
+static int parse_bpm(BMS* bms, char* command) {
+	if (stristr(command, "#BPM") && iswhitespace(command[4])) {
+		command += strlen("#BPM");
+		trim(command);
+		bms->init_bpm = strtod(command, NULL);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #RANK x
+static int parse_rank(BMS* bms, char* command) {
+	if (stristr(command, "#RANK")) {
+		command += strlen("#RANK");
+		trim(command);
+		long value = strtol(command, NULL, 10);
+		bms->rank = (int)value;
+		return 1;
+	}
+
+	return 0;
+}
+
+// #TOTAL x
+static int parse_total(BMS* bms, char* command) {
+	if (stristr(command, "#TOTAL")) {
+		command += strlen("#TOTAL");
+		trim(command);
+		bms->total = strtod(command, NULL);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #VOLWAV x
+static int parse_volwav(BMS* bms, char* command) {
+	if (stristr(command, "#VOLWAV")) {
+		command += strlen("#VOLWAV");
+		trim(command);
+		bms->volwav = strtod(command, NULL);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #WAVxx <filename>
+static int parse_wav(BMS* bms, char* command) {
+	if (stristr(command, "#WAV")) {
+		command += strlen("#WAV");
+
+		// Extract the base 36 ID (xx)
+		char id_base36[] = {command[0], command[1]};
+		long id = strtol(id_base36, NULL, 36);
+
+		// Resize the defs array
+		int old_count = bms->wav_def_count;
+		bms->wav_def_count = id + 1;
+		bms->wav_defs = recalloc(bms->wav_defs, sizeof(WavDef*), old_count, bms->wav_def_count);
+
+		command += 2;
+		trim(command);
+
+		// Create a new entry in the defs array
+		bms->wav_defs[id] = malloc(sizeof(WavDef));
+		bms->wav_defs[id]->file = strdup(command);
+
+		// Open the file
+		float* buffer = NULL;
+		size_t size = 0;
+		
+		if (!Mixer_load_file(bms->wav_defs[id]->file, &buffer, &size)) {
+			printf("Could not open WAV%ld.\n", id);
+			return 0;
+		}
+
+		// Extract the data
+		bms->wav_defs[id]->data = buffer;
+		bms->wav_defs[id]->size = size;
+		return 1;
+	}
+
+	return 0;
+}
+
+// #BMPxx <filename>
+static int parse_bmp(BMS* bms, char* command) {
+	if (stristr(command, "#BMP")) {
+		command += strlen("#BMP");
+
+		// Extract the base 36 ID (xx)
+		char id_base36[] = {command[0], command[1]};
+		long id = strtol(id_base36, NULL, 36);
+
+		// Resize the defs array
+		int old_count = bms->bmp_def_count;
+		bms->bmp_def_count = id + 1;
+		bms->bmp_defs = recalloc(bms->bmp_defs, sizeof(BmpDef*), old_count, bms->bmp_def_count);
+
+		command += 2;
+		trim(command);
+
+		// Create a new entry in the defs array
+		bms->bmp_defs[id] = malloc(sizeof(BmpDef));
+		bms->bmp_defs[id]->file = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #TEXTxx "<message>"
+// #TEXTxx <message>
+static int parse_text(BMS* bms, char* command) {
+	if (stristr(command, "#TEXT")) {
+		command += strlen("#TEXT");
+
+		// Extract the base 36 ID (xx)
+		char id_base36[] = {command[0], command[1]};
+		long id = strtol(id_base36, NULL, 36);
+
+		// Resize the defs array
+		int old_count = bms->text_def_count;
+		bms->text_def_count = id + 1;
+		bms->text_defs = recalloc(bms->text_defs, sizeof(char*), old_count, bms->text_def_count);
+
+		command += 2;
+		trim(command);
+
+		// Strip quotes
+		if (command[0] == '"') {
+			command++;
+			command[strlen(command) - 1] = '\0';
+		}
+
+		// Create a new entry in the defs array
+		bms->text_defs[id] = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #COMMENT "<message>"
+// #COMMENT <message>
+static int parse_comment(BMS* bms, char* command) {
+	if (stristr(command, "#COMMENT")) {
+		command += strlen("#COMMENT");
+
+		// Resize the defs array
+		int old_count = bms->comment_count;
+		bms->comment_count++;
+		bms->comments = recalloc(bms->comments, sizeof(char*), old_count, bms->comment_count);
+
+		trim(command);
+
+		// Strip quotes
+		if (command[0] == '"') {
+			command++;
+			command[strlen(command) - 1] = '\0';
+		}
+
+		// Create a new entry in the defs array
+		bms->comments[old_count] = strdup(command);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #BPMxx <new BPM>
+static int parse_bpmex(BMS* bms, char* command) {
+	if (stristr(command, "#BPM")) {
+		command += strlen("#BPM");
+
+		// Extract the base 36 ID (xx)
+		char id_base36[] = {command[0], command[1]};
+		long id = strtol(id_base36, NULL, 36);
+
+		// Resize the defs array
+		int old_count = bms->bpm_def_count;
+		bms->bpm_def_count = id + 1;
+		bms->bpm_defs = recalloc(bms->bpm_defs, sizeof(double*), old_count, bms->bpm_def_count);
+
+		command += 2;
+		trim(command);
+
+		// Create a new entry in the defs array
+		bms->bpm_defs[id] = strtod(command, NULL);
+		return 1;
+	}
+
+	return 0;
+}
+
+// #xxxyy:zz
+static int parse_line(BMS* bms, char* command) {
+	if (command[6] == ':') {
+		// Extract the measure number (xxx)
+		char measure_str[] = {command[1], command[2], command[3]};
+		long measure_num = strtol(measure_str, NULL, 10);
+
+		// Extract the channel number
+		char channel_str[] = {command[4], command[5]};
+		long channel_num = strtol(channel_str, NULL, 36);
+
+		// Extract the message
+		char* message = command + strlen("#xxxyy:");
+
+		// Resize the measures array if need be
+		int old_count = bms->measure_count;
+		bms->measure_count = measure_num + 1;
+		bms->measures = recalloc(bms->measures, sizeof(Measure*), old_count, bms->measure_count);
+
+		// If the measure doesn't exist, create it
+		if (bms->measures[measure_num] == NULL) {
+			bms->measures[measure_num] = malloc(sizeof(Measure));
+			bms->measures[measure_num]->channel_count = 0;
+			bms->measures[measure_num]->channels = NULL;
+			bms->measures[measure_num]->bgm_channel_count = 0;
+			bms->measures[measure_num]->bgm_channels = NULL;
+			bms->measures[measure_num]->metre = 1.0;
+		}
+
+		// Particular channel numbers are just used for changing settings
+		switch (channel_num) {
+			case CHANNEL_METRE:
+				bms->measures[measure_num]->metre = strtod(message, NULL);
+				return 1;
+
+			// More cases will go here
+
+			default:
+				break;
+		}
+
+		// BGM channel can have nested channels of its own, so they are handled differently
+		if (channel_num == CHANNEL_BGM) {
+			// Incremement the BGM channel count and resize
+			int bgm_channel_index = bms->measures[measure_num]->bgm_channel_count;
+			bms->measures[measure_num]->bgm_channel_count++;
+			bms->measures[measure_num]->bgm_channels = recalloc(
+				bms->measures[measure_num]->bgm_channels,
+				sizeof(Channel*),
+				bgm_channel_index,
+				bms->measures[measure_num]->bgm_channel_count
+			);
+
+			// Create a new BGM channel for this measure
+			bms->measures[measure_num]->bgm_channels[bgm_channel_index] = malloc(sizeof(Channel));
+			bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects = NULL;
+
+			// Count the objects and allocate an array of objects for this channel
+			bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count = strlen(message) / 2;
+			bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects = calloc(
+				sizeof(Object*),
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count
+			);
+
+			// Populate the object data with base 36 IDs
+			for (int i = 0; i < bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count; i++) {
+				// Extract the ID (zz)
+				char id_base36[] = {message[i * 2], message[i * 2 + 1]};
+				long id = strtol(id_base36, NULL, 36);
+
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i] = malloc(sizeof(Object));
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i]->id = (int)id;
+				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i]->activated = 0;
+			}
+		}
+
+		// All other channels
+		else {
+			// Resize the channels array if need be
+			old_count = bms->measures[measure_num]->channel_count;
+			bms->measures[measure_num]->channel_count = channel_num + 1;
+			bms->measures[measure_num]->channels = recalloc(
+				bms->measures[measure_num]->channels,
+				sizeof(Channel*),
+				old_count,
+				bms->measures[measure_num]->channel_count
+			);
+
+			// If the channel doesn't exist, create it
+			if (bms->measures[measure_num]->channels[channel_num] == NULL) {
+				bms->measures[measure_num]->channels[channel_num] = malloc(sizeof(Channel));
+				bms->measures[measure_num]->channels[channel_num]->objects = NULL;
+			}
+
+			// If an objects array already exists, free it so we can overwrite it
+			if (bms->measures[measure_num]->channels[channel_num]->objects != NULL) {
+				free(bms->measures[measure_num]->channels[channel_num]->objects);
+				bms->measures[measure_num]->channels[channel_num]->objects = NULL;
+			}
+
+			// Count the objects and allocate an array of objects for this channel
+			bms->measures[measure_num]->channels[channel_num]->object_count = strlen(message) / 2;
+			bms->measures[measure_num]->channels[channel_num]->objects = calloc(
+				sizeof(Object*),
+				bms->measures[measure_num]->channels[channel_num]->object_count
+			);
+
+			// Populate the object data with base 36 IDs
+			for (int i = 0; i < bms->measures[measure_num]->channels[channel_num]->object_count; i++) {
+				// Extract the ID (zz)
+				char id_base36[] = {message[i * 2], message[i * 2 + 1]};
+				long id = strtol(id_base36, NULL, 36);
+
+				bms->measures[measure_num]->channels[channel_num]->objects[i] = malloc(sizeof(Object));
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->id = (int)id;
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->activated = 0;
+			}
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
 // Parse a BMS chart from a file and load it into a structure
 BMS* BMS_load(const char* path) {
 	FILE* fp = fopen(path, "r");
@@ -16,7 +437,7 @@ BMS* BMS_load(const char* path) {
 
 	BMS* bms = malloc(sizeof(BMS));
 
-	// Initialize default values
+	// Initialize metadata fields
 	bms->play_type = PLAY_SINGLE;
 	bms->genre = DEFAULT_GENRE;
 	bms->title = DEFAULT_TITLE;
@@ -32,7 +453,7 @@ BMS* BMS_load(const char* path) {
 	bms->comments = NULL;
 	bms->comment_count = 0;
 
-	// Initialize definitions
+	// Initialize definition fields
 	bms->wav_defs = NULL;
 	bms->wav_def_count = 0;
 	bms->bmp_defs = NULL;
@@ -44,7 +465,7 @@ BMS* BMS_load(const char* path) {
 	bms->measures = NULL;
 	bms->measure_count = 0;
 
-	// Iterate through each line and parse
+	// Iterate through each line and parse commands
 	char line[4096] = "";
 	while (fgets(line, sizeof line, fp)) {
 		char* command = strstr(line, "#");
@@ -54,343 +475,28 @@ BMS* BMS_load(const char* path) {
 			continue;
 		}
 
-		// #PLAYER x
-		if (stristr(command, "#PLAYER")) {
-			command += strlen("#PLAYER");
-			trim(command);
-			long value = strtol(command, NULL, 10);
+		// Parse metadata
+		if (parse_player(bms, command)) continue;
+		if (parse_genre(bms, command)) continue;
+		if (parse_artist(bms, command)) continue;
+		if (parse_subartist(bms, command)) continue;
+		if (parse_maker(bms, command)) continue;
+		if (parse_title(bms, command)) continue;
+		if (parse_subtitle(bms, command)) continue;
+		if (parse_bpm(bms, command)) continue;
+		if (parse_rank(bms, command)) continue;
+		if (parse_total(bms, command)) continue;
+		if (parse_volwav(bms, command)) continue;
 
-			if (value >= PLAY_SINGLE && value <= PLAY_BATTLE) {
-				bms->play_type = (int)value;
-			}
-		}
+		// Parse definitions
+		if (parse_wav(bms, command)) continue;
+		if (parse_bmp(bms, command)) continue;
+		if (parse_text(bms, command)) continue;
+		if (parse_comment(bms, command)) continue;
+		if (parse_bpmex(bms, command)) continue;
 
-		// #GENRE x
-		// Due to a typo at some point in BMS history, GENLE is also accepted
-		else if (stristr(command, "#GENRE") || stristr(command, "#GENLE")) {
-			command += strlen("#GENRE");
-			trim(command);
-			bms->genre = strdup(command);
-		}
-
-		// #ARTIST x
-		else if (stristr(command, "#ARTIST")) {
-			command += strlen("#ARTIST");
-			trim(command);
-			bms->artist = strdup(command);
-		}
-
-		// #SUBARTIST x
-		else if (stristr(command, "#SUBARTIST")) {
-			command += strlen("#SUBARTIST");
-
-			// Resize the defs array
-			int old_count = bms->subartist_count;
-			bms->subartist_count++;
-			bms->subartists = recalloc(bms->subartists, sizeof(char*), old_count, bms->subartist_count);
-
-			trim(command);
-
-			// Create a new entry in the defs array
-			bms->subartists[old_count] = strdup(command);
-		}
-
-		// #MAKER x
-		else if (stristr(command, "#MAKER")) {
-			command += strlen("#MAKER");
-			trim(command);
-			bms->maker = strdup(command);
-		}
-
-		// #TITLE x
-		else if (stristr(command, "#TITLE")) {
-			command += strlen("#TITLE");
-			trim(command);
-			bms->title = strdup(command);
-		}
-
-		// #SUBTITLE x
-		else if (stristr(command, "#SUBTITLE")) {
-			command += strlen("#SUBTITLE");
-			trim(command);
-			bms->subtitle = strdup(command);
-		}
-
-		// #BPM x
-		// Not to be confused with #BPMxx yy
-		else if (stristr(command, "#BPM") && iswhitespace(command[4])) {
-			command += strlen("#BPM");
-			trim(command);
-			bms->init_bpm = strtod(command, NULL);
-		}
-
-		// #RANK x
-		else if (stristr(command, "#RANK")) {
-			command += strlen("#RANK");
-			trim(command);
-			long value = strtol(command, NULL, 10);
-			bms->rank = (int)value;
-		}
-
-		// #TOTAL x
-		else if (stristr(command, "#TOTAL")) {
-			command += strlen("#TOTAL");
-			trim(command);
-			bms->total = strtod(command, NULL);
-		}
-
-		// #VOLWAV x
-		else if (stristr(command, "#VOLWAV")) {
-			command += strlen("#VOLWAV");
-			trim(command);
-			bms->volwav = strtod(command, NULL);
-		}
-
-		// #WAVxx <filename>
-		// In modern BMS, xx is parsed in base 36 to allow more channels
-		else if (stristr(command, "#WAV")) {
-			command += strlen("#WAV");
-
-			// Extract the ID (xx)
-			char id_base36[] = {command[0], command[1]};
-			long id = strtol(id_base36, NULL, 36);
-
-			// Resize the defs array
-			int old_count = bms->wav_def_count;
-			bms->wav_def_count = id + 1;
-			bms->wav_defs = recalloc(bms->wav_defs, sizeof(WavDef*), old_count, bms->wav_def_count);
-
-			command += 2;
-			trim(command);
-
-			// Create a new entry in the defs array
-			bms->wav_defs[id] = malloc(sizeof(WavDef));
-			bms->wav_defs[id]->file = strdup(command);
-
-			// Open the file
-			float* buffer = NULL;
-			size_t size = 0;
-			
-			if (!Mixer_load_file(bms->wav_defs[id]->file, &buffer, &size)) {
-				printf("Could not open WAV%ld.\n", id);
-				return NULL;
-			}
-
-			// Extract the data
-			bms->wav_defs[id]->data = buffer;
-			bms->wav_defs[id]->size = size;
-		}
-
-		// #BMPxx <filename>
-		// In modern BMS, xx is parsed in base 36 to allow more channels
-		else if (stristr(command, "#BMP")) {
-			command += strlen("#BMP");
-
-			// Extract the ID (xx)
-			char id_base36[] = {command[0], command[1]};
-			long id = strtol(id_base36, NULL, 36);
-
-			// Resize the defs array
-			int old_count = bms->bmp_def_count;
-			bms->bmp_def_count = id + 1;
-			bms->bmp_defs = recalloc(bms->bmp_defs, sizeof(BmpDef*), old_count, bms->bmp_def_count);
-
-			command += 2;
-			trim(command);
-
-			// Create a new entry in the defs array
-			bms->bmp_defs[id] = malloc(sizeof(BmpDef));
-			bms->bmp_defs[id]->file = strdup(command);
-		}
-
-		// #TEXTxx "<message>"
-		// #TEXTxx <message>
-		// #SONGxx "<message>"
-		// #SONGxx <message>
-		// In modern BMS, xx is parsed in base 36 to allow more channels
-		else if (stristr(command, "#TEXT")) {
-			command += strlen("#TEXT");
-
-			// Extract the ID (xx)
-			char id_base36[] = {command[0], command[1]};
-			long id = strtol(id_base36, NULL, 36);
-
-			// Resize the defs array
-			int old_count = bms->text_def_count;
-			bms->text_def_count = id + 1;
-			bms->text_defs = recalloc(bms->text_defs, sizeof(char*), old_count, bms->text_def_count);
-
-			command += 2;
-			trim(command);
-
-			// Strip quotes
-			if (command[0] == '"') {
-				command++;
-				command[strlen(command) - 1] = '\0';
-			}
-
-			// Create a new entry in the defs array
-			bms->text_defs[id] = strdup(command);
-		}
-
-		// #COMMENT "<message>"
-		// #COMMENT <message>
-		else if (stristr(command, "#COMMENT")) {
-			command += strlen("#COMMENT");
-
-			// Resize the defs array
-			int old_count = bms->comment_count;
-			bms->comment_count++;
-			bms->comments = recalloc(bms->comments, sizeof(char*), old_count, bms->comment_count);
-
-			trim(command);
-
-			// Strip quotes
-			if (command[0] == '"') {
-				command++;
-				command[strlen(command) - 1] = '\0';
-			}
-
-			// Create a new entry in the defs array
-			bms->comments[old_count] = strdup(command);
-		}
-
-		// #BPMxx <new BPM>
-		// In modern BMS, xx is parsed in base 36 to allow more channels
-		else if (stristr(command, "#BPM")) {
-			command += strlen("#BPM");
-
-			// Extract the ID (xx)
-			char id_base36[] = {command[0], command[1]};
-			long id = strtol(id_base36, NULL, 36);
-
-			// Resize the defs array
-			int old_count = bms->bpm_def_count;
-			bms->bpm_def_count = id + 1;
-			bms->bpm_defs = recalloc(bms->bpm_defs, sizeof(double*), old_count, bms->bpm_def_count);
-
-			command += 2;
-			trim(command);
-
-			// Create a new entry in the defs array
-			bms->bpm_defs[id] = strtod(command, NULL);
-		}
-
-		// #xxxyy:zz
-		else if (command[6] == ':') {
-			// Extract the measure number (xxx)
-			char measure_str[] = {command[1], command[2], command[3]};
-			long measure_num = strtol(measure_str, NULL, 10);
-
-			// Extract the channel number
-			char channel_str[] = {command[4], command[5]};
-			long channel_num = strtol(channel_str, NULL, 36);
-
-			// Extract the message
-			char* message = command + strlen("#xxxyy:");
-
-			// Resize the measures array if need be
-			int old_count = bms->measure_count;
-			bms->measure_count = measure_num + 1;
-			bms->measures = recalloc(bms->measures, sizeof(Measure*), old_count, bms->measure_count);
-
-			// If the measure doesn't exist, create it
-			if (bms->measures[measure_num] == NULL) {
-				bms->measures[measure_num] = malloc(sizeof(Measure));
-				bms->measures[measure_num]->channel_count = 0;
-				bms->measures[measure_num]->channels = NULL;
-				bms->measures[measure_num]->bgm_channel_count = 0;
-				bms->measures[measure_num]->bgm_channels = NULL;
-				bms->measures[measure_num]->metre = 1.0;
-			}
-
-			// Particular channel numbers are just used for changing settings
-			switch (channel_num) {
-				case CHANNEL_METRE:
-					bms->measures[measure_num]->metre = strtod(message, NULL);
-					continue;
-
-				default:
-					break;
-			}
-
-			// BGM channel can have nested channels of its own, so they are handled differently
-			if (channel_num == CHANNEL_BGM) {
-				// Incremement the BGM channel count and resize
-				int bgm_channel_index = bms->measures[measure_num]->bgm_channel_count;
-				bms->measures[measure_num]->bgm_channel_count++;
-				bms->measures[measure_num]->bgm_channels = recalloc(
-					bms->measures[measure_num]->bgm_channels,
-					sizeof(Channel*),
-					bgm_channel_index,
-					bms->measures[measure_num]->bgm_channel_count
-				);
-
-				// Create a new BGM channel for this measure
-				bms->measures[measure_num]->bgm_channels[bgm_channel_index] = malloc(sizeof(Channel));
-				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects = NULL;
-
-				// Count the objects and allocate an array of objects for this channel
-				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count = strlen(message) / 2;
-				bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects = calloc(
-					sizeof(Object*),
-					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count
-				);
-
-				// Populate the object data with base 36 IDs
-				for (int i = 0; i < bms->measures[measure_num]->bgm_channels[bgm_channel_index]->object_count; i++) {
-					// Extract the ID (zz)
-					char id_base36[] = {message[i * 2], message[i * 2 + 1]};
-					long id = strtol(id_base36, NULL, 36);
-
-					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i] = malloc(sizeof(Object));
-					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i]->id = (int)id;
-					bms->measures[measure_num]->bgm_channels[bgm_channel_index]->objects[i]->activated = 0;
-				}
-			}
-			// All other channels
-			else {
-				// Resize the channels array if need be
-				old_count = bms->measures[measure_num]->channel_count;
-				bms->measures[measure_num]->channel_count = channel_num + 1;
-				bms->measures[measure_num]->channels = recalloc(
-					bms->measures[measure_num]->channels,
-					sizeof(Channel*),
-					old_count,
-					bms->measures[measure_num]->channel_count
-				);
-
-				// If the channel doesn't exist, create it
-				if (bms->measures[measure_num]->channels[channel_num] == NULL) {
-					bms->measures[measure_num]->channels[channel_num] = malloc(sizeof(Channel));
-					bms->measures[measure_num]->channels[channel_num]->objects = NULL;
-				}
-
-				// If an objects array already exists, free it so we can overwrite it
-				if (bms->measures[measure_num]->channels[channel_num]->objects != NULL) {
-					free(bms->measures[measure_num]->channels[channel_num]->objects);
-					bms->measures[measure_num]->channels[channel_num]->objects = NULL;
-				}
-
-				// Count the objects and allocate an array of objects for this channel
-				bms->measures[measure_num]->channels[channel_num]->object_count = strlen(message) / 2;
-				bms->measures[measure_num]->channels[channel_num]->objects = calloc(
-					sizeof(Object*),
-					bms->measures[measure_num]->channels[channel_num]->object_count
-				);
-
-				// Populate the object data with base 36 IDs
-				for (int i = 0; i < bms->measures[measure_num]->channels[channel_num]->object_count; i++) {
-					// Extract the ID (zz)
-					char id_base36[] = {message[i * 2], message[i * 2 + 1]};
-					long id = strtol(id_base36, NULL, 36);
-
-					bms->measures[measure_num]->channels[channel_num]->objects[i] = malloc(sizeof(Object));
-					bms->measures[measure_num]->channels[channel_num]->objects[i]->id = (int)id;
-					bms->measures[measure_num]->channels[channel_num]->objects[i]->activated = 0;
-				}
-			}
-		}
+		// Parse lines
+		if (parse_line(bms, command)) continue;
 	}
 
 	// Initialize helpers

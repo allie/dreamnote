@@ -82,6 +82,8 @@ typedef struct {
 typedef struct {
 	int id;
 	int activated;
+	double ypos;
+	int lane;
 } Object;
 
 // An internal representation of a single channel/column.
@@ -134,14 +136,17 @@ typedef struct {
 
 	// Helper fields
 	double elapsed;
-	double current_measure;
-	int current_measure_num;
+	double current_actual_measure;
+	double current_measure_part;
+	int current_measure;
+	int total_measures;
 	double current_bpm;
 	double mps;
 } BMS;
 
 BMS* BMS_load(const char* path);
 void BMS_step(BMS* bms, double dt);
+Measure** BMS_get_renderable_objects(BMS* bms);
 void BMS_free(BMS* bms);
 void BMS_print_info(BMS* bms);
 

@@ -24,11 +24,18 @@ static int is_wav_channel(int channel) {
 		(channel < 360 || channel > 366); // More settings channels
 }
 
+// Determines whether a channel number is a visible channel or not
+static int is_visible_channel(int channel) {
+	return (channel >= 37 && channel <= 71) || // 1P visible
+		(channel >= 73 && channel <= 107) || // 2P visible
+		(channel >= 181 && channel <= 215) || // 1P long note
+		(channel >= 217 && channel <= 251); // 2P long note
+}
+
 // #PLAYER x
 static int parse_player(BMS* bms, char* command) {
 	if (stristr(command, "#PLAYER")) {
 		command += strlen("#PLAYER");
-		trim(command);
 		long value = strtol(command, NULL, 10);
 
 		if (value >= PLAY_SINGLE && value <= PLAY_BATTLE) {
@@ -45,7 +52,6 @@ static int parse_player(BMS* bms, char* command) {
 static int parse_genre(BMS* bms, char* command) {
 	if (stristr(command, "#GENRE") || stristr(command, "#GENLE")) {
 		command += strlen("#GENRE");
-		trim(command);
 		bms->genre = strdup(command);
 		return 1;
 	}
@@ -57,7 +63,6 @@ static int parse_genre(BMS* bms, char* command) {
 static int parse_artist(BMS* bms, char* command) {
 	if (stristr(command, "#ARTIST")) {
 		command += strlen("#ARTIST");
-		trim(command);
 		bms->artist = strdup(command);
 		return 1;
 	}
@@ -75,8 +80,6 @@ static int parse_subartist(BMS* bms, char* command) {
 		bms->subartist_count++;
 		bms->subartists = recalloc(bms->subartists, sizeof(char*), old_count, bms->subartist_count);
 
-		trim(command);
-
 		// Create a new entry in the defs array
 		bms->subartists[old_count] = strdup(command);
 		return 1;
@@ -89,7 +92,6 @@ static int parse_subartist(BMS* bms, char* command) {
 static int parse_maker(BMS* bms, char* command) {
 	if (stristr(command, "#MAKER")) {
 		command += strlen("#MAKER");
-		trim(command);
 		bms->maker = strdup(command);
 		return 1;
 	}
@@ -101,7 +103,6 @@ static int parse_maker(BMS* bms, char* command) {
 static int parse_title(BMS* bms, char* command) {
 	if (stristr(command, "#TITLE")) {
 		command += strlen("#TITLE");
-		trim(command);
 		bms->title = strdup(command);
 		return 1;
 	}
@@ -113,7 +114,6 @@ static int parse_title(BMS* bms, char* command) {
 static int parse_subtitle(BMS* bms, char* command) {
 	if (stristr(command, "#SUBTITLE")) {
 		command += strlen("#SUBTITLE");
-		trim(command);
 		bms->subtitle = strdup(command);
 		return 1;
 	}
@@ -126,7 +126,6 @@ static int parse_subtitle(BMS* bms, char* command) {
 static int parse_bpm(BMS* bms, char* command) {
 	if (stristr(command, "#BPM") && iswhitespace(command[4])) {
 		command += strlen("#BPM");
-		trim(command);
 		bms->init_bpm = strtod(command, NULL);
 		return 1;
 	}
@@ -138,7 +137,6 @@ static int parse_bpm(BMS* bms, char* command) {
 static int parse_rank(BMS* bms, char* command) {
 	if (stristr(command, "#RANK")) {
 		command += strlen("#RANK");
-		trim(command);
 		long value = strtol(command, NULL, 10);
 		bms->rank = (int)value;
 		return 1;
@@ -151,7 +149,6 @@ static int parse_rank(BMS* bms, char* command) {
 static int parse_total(BMS* bms, char* command) {
 	if (stristr(command, "#TOTAL")) {
 		command += strlen("#TOTAL");
-		trim(command);
 		bms->total = strtod(command, NULL);
 		return 1;
 	}
@@ -163,7 +160,6 @@ static int parse_total(BMS* bms, char* command) {
 static int parse_volwav(BMS* bms, char* command) {
 	if (stristr(command, "#VOLWAV")) {
 		command += strlen("#VOLWAV");
-		trim(command);
 		bms->volwav = strtod(command, NULL);
 		return 1;
 	}
@@ -201,7 +197,7 @@ static int parse_wav(BMS* bms, char* command) {
 		size_t size = 0;
 		
 		if (!Mixer_load_file(bms->wav_defs[id]->file, &buffer, &size)) {
-			printf("Could not open WAV%ld.\n", id);
+			printf("Could not open WAV%ld (%s).\n", id, command);
 			return 0;
 		}
 
@@ -229,7 +225,6 @@ static int parse_bmp(BMS* bms, char* command) {
 		bms->bmp_defs = recalloc(bms->bmp_defs, sizeof(BmpDef*), old_count, bms->bmp_def_count);
 
 		command += 2;
-		trim(command);
 
 		// Create a new entry in the defs array
 		bms->bmp_defs[id] = malloc(sizeof(BmpDef));
@@ -260,7 +255,6 @@ static int parse_text(BMS* bms, char* command) {
 		bms->text_defs = recalloc(bms->text_defs, sizeof(char*), old_count, bms->text_def_count);
 
 		command += 2;
-		trim(command);
 
 		// Strip quotes
 		if (command[0] == '"') {
@@ -286,8 +280,6 @@ static int parse_comment(BMS* bms, char* command) {
 		int old_count = bms->comment_count;
 		bms->comment_count++;
 		bms->comments = recalloc(bms->comments, sizeof(char*), old_count, bms->comment_count);
-
-		trim(command);
 
 		// Strip quotes
 		if (command[0] == '"') {
@@ -318,7 +310,6 @@ static int parse_bpmex(BMS* bms, char* command) {
 		bms->bpm_defs = recalloc(bms->bpm_defs, sizeof(double*), old_count, bms->bpm_def_count);
 
 		command += 2;
-		trim(command);
 
 		// Create a new entry in the defs array
 		bms->bpm_defs[id] = strtod(command, NULL);
@@ -332,16 +323,15 @@ static int parse_bpmex(BMS* bms, char* command) {
 static int parse_line(BMS* bms, char* command) {
 	if (command[6] == ':') {
 		// Extract the measure number (xxx)
-		char measure_str[] = {command[1], command[2], command[3]};
+		char measure_str[] = {command[1], command[2], command[3], '\0'};
 		long measure_num = strtol(measure_str, NULL, 10);
 
 		// Extract the channel number
-		char channel_str[] = {command[4], command[5]};
+		char channel_str[] = {command[4], command[5], '\0'};
 		long channel_num = strtol(channel_str, NULL, 36);
 
 		// Extract the message
 		char* message = command + strlen("#xxxyy:");
-		trim(message);
 
 		// Resize the measures array if need be
 		int old_count = bms->measure_count;
@@ -445,6 +435,8 @@ static int parse_line(BMS* bms, char* command) {
 				bms->measures[measure_num]->channels[channel_num]->objects[i] = malloc(sizeof(Object));
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->id = (int)id;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->activated = 0;
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->ypos = 0.0;
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->lane = 0;
 			}
 		}
 
@@ -452,6 +444,82 @@ static int parse_line(BMS* bms, char* command) {
 	}
 
 	return 0;
+}
+
+// Calculate the Y position relative to beginning of the measure and lane number for each note
+static void calculate_object_positions(BMS* bms) {
+	for (int i = 0; i < bms->measure_count; i++) {
+		if (bms->measures[i] == NULL || bms->measures[i]->channels == NULL) {
+			continue;
+		}
+
+		for (int j = 0; j < bms->measures[i]->channel_count; j++) {
+			if (bms->measures[i]->channels[j] == NULL || bms->measures[i]->channels[j]->objects == NULL) {
+				continue;
+			}
+
+			for (int k = 0; k < bms->measures[i]->channels[j]->object_count; k++) {
+				if (bms->measures[i]->channels[j]->objects[k] == NULL || bms->measures[i]->channels[j]->objects[k]->id == 0) {
+					continue;
+				}
+
+				bms->measures[i]->channels[j]->objects[k]->ypos = 1.0 - (double)k / bms->measures[i]->channels[j]->object_count;
+
+				int lane = 0;
+
+				// TODO: switch on mode hint
+				switch (j) {
+					case CHANNEL_IIDX_KEY1:
+						lane = 1;
+						break;
+
+					case CHANNEL_IIDX_KEY2:
+						lane = 2;
+						break;
+
+					case CHANNEL_IIDX_KEY3:
+						lane = 3;
+						break;
+
+					case CHANNEL_IIDX_KEY4:
+						lane = 4;
+						break;
+
+					case CHANNEL_IIDX_KEY5:
+						lane = 5;
+						break;
+
+					case CHANNEL_IIDX_KEY6:
+						lane = 6;
+						break;
+
+					case CHANNEL_IIDX_KEY7:
+						lane = 7;
+						break;
+
+					case CHANNEL_IIDX_SCRATCH:
+						lane = 0;
+						break;
+
+					default:
+						lane = 0;
+						break;
+				}
+
+				bms->measures[i]->channels[j]->objects[k]->lane = lane;
+			}
+		}
+	}
+}
+
+static void calculate_total_measures(BMS* bms) {
+	for (int i = 0; i < bms->measure_count; i++) {
+		if (bms->measures[i] == NULL) {
+			continue;
+		}
+
+		bms->total_measures++;
+	}
 }
 
 // Parse a BMS chart from a file and load it into a structure
@@ -508,6 +576,8 @@ BMS* BMS_load(const char* path) {
 			continue;
 		}
 
+		trim(command);
+
 		// Parse metadata
 		if (parse_player(bms, command)) continue;
 		if (parse_genre(bms, command)) continue;
@@ -534,10 +604,18 @@ BMS* BMS_load(const char* path) {
 
 	// Initialize helpers
 	bms->elapsed = 0.0;
-	bms->current_measure = 0.0;
-	bms->current_measure_num = 1;
+	bms->current_actual_measure = 0.0;
+	bms->current_measure_part = 0.0;
+	bms->current_measure = 0;
+	bms->total_measures = 0;
 	bms->current_bpm = bms->init_bpm;
 	bms->mps = 1 / measure_duration(bms->current_bpm, 1.0);
+
+	// Calculate the visual positions for each note
+	calculate_object_positions(bms);
+
+	// Calculate the total actual number of measures
+	calculate_total_measures(bms);
 
 	return bms;
 }
@@ -546,16 +624,16 @@ BMS* BMS_load(const char* path) {
 void BMS_step(BMS* bms, double dt) {
 	bms->elapsed += dt;
 
-	double last_measure = bms->current_measure;
+	double last_measure = bms->current_actual_measure;
 	int last_measure_index = (int)last_measure;
 	// double last_measure_part = last_measure - last_measure_index;
 
-	bms->current_measure += bms->mps * dt;
-	int measure_index = (int)bms->current_measure;
-	double measure_part = bms->current_measure - measure_index;
+	bms->current_actual_measure += bms->mps * dt;
+	int measure_index = (int)bms->current_actual_measure;
+	bms->current_measure_part = bms->current_actual_measure - measure_index;
 
 	while (bms->measures[measure_index] == NULL) {
-		bms->current_measure += 1.0;
+		bms->current_actual_measure += 1.0;
 		measure_index++;
 		last_measure_index++;
 	}
@@ -570,7 +648,7 @@ void BMS_step(BMS* bms, double dt) {
 			continue;
 		}
 
-		int object_index = (int)(measure_part * channel->object_count);
+		int object_index = (int)(bms->current_measure_part * channel->object_count);
 
 		Object* object = channel->objects[object_index];
 
@@ -598,7 +676,7 @@ void BMS_step(BMS* bms, double dt) {
 			continue;
 		}
 
-		int object_index = (int)(measure_part * channel->object_count);
+		int object_index = (int)(bms->current_measure_part * channel->object_count);
 
 		Object* object = channel->objects[object_index];
 
@@ -623,9 +701,64 @@ void BMS_step(BMS* bms, double dt) {
 
 	// If this is a new measure, recalculate some things
 	if (measure_index > last_measure_index) {
-		bms->current_measure_num++;
+		bms->current_measure++;
 		bms->mps = 1 / measure_duration(bms->current_bpm, measure->metre);
 	}
+}
+
+// Returns all renderable objects (notes) for the whole chart
+Measure** BMS_get_renderable_objects(BMS* bms) {
+	Measure** measures = calloc(bms->total_measures, sizeof(Measure*));
+	int current_index = 0;
+
+	for (int i = 0; i < bms->measure_count; i++) {
+		if (bms->measures[i] == NULL) {
+			continue;
+		}
+
+		// Create a new measure in the output array
+		measures[current_index] = calloc(1, sizeof(Measure));
+
+		// Count the visible channels
+		int visible[1400];
+		int visible_count = 0;
+
+		for (int j = 0; j < 1400; j++) {
+			visible[j] = -1;
+		}
+
+		for (int j = 0; j < bms->measures[i]->channel_count; j++) {
+			if (bms->measures[i]->channels[j] == NULL) {
+				continue;
+			}
+
+			if (is_visible_channel(j)) {
+				visible[visible_count++] = j;
+			}
+		}
+
+		// Record the number of visible channels
+		measures[current_index]->channel_count = visible_count;
+
+		// Allocate channels to the measure for every visible channel
+		if (visible_count > 0) {
+			measures[current_index]->channels = calloc(visible_count, sizeof(Channel*));
+
+			// Copy objects to each channel
+			for (int j = 0; j < visible_count; j++) {
+				int v = visible[j];
+				int count = bms->measures[i]->channels[v]->object_count;
+				measures[current_index]->channels[j] = calloc(1, sizeof(Channel));
+				measures[current_index]->channels[j]->object_count = count;
+				measures[current_index]->channels[j]->objects = calloc(count, sizeof(Object*));
+				memcpy(measures[current_index]->channels[j]->objects, bms->measures[i]->channels[v]->objects, count * sizeof(Object*));
+			}
+		}
+
+		current_index++;
+	}
+
+	return measures;
 }
 
 // Free all memory used by a BMS structure

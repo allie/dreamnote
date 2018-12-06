@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
 
 int iswhitespace(char c) {
 	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -30,18 +31,18 @@ void trim(char* str) {
 	int src = 0;
 	int len = strlen(str);
 
+	// Advance the starting pointer until there is no more whitespace
 	while (iswhitespace(str[src])) {
 		src++;
 	}
 
-	for(dest = 0; src < len; dest++, src++) {
-		str[dest] = str[src];
-	}
-
-	// Working backwards, set all trailing spaces to NULL.
-	for(dest = len - 1; iswhitespace(str[dest]); --dest) {
+	// Set trailing whitespace to NULL
+	for (dest = len - 1; iswhitespace(str[dest]); dest--) {
 		str[dest] = '\0';
 	}
+
+	// Shift the string back to the starting point so it can be freed later
+	memmove(str, str + src, strlen(str + src) + 1);
 }
 
 void* recalloc(void* array, size_t elem_size, int old_count, int new_count) {

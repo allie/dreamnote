@@ -1,6 +1,7 @@
 #include "bms.h"
 #include "graphics.h"
 #include "mixer.h"
+#include "play.h"
 
 #include <SDL2/SDL.h>
 #include <stdio.h>
@@ -11,13 +12,6 @@
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
 		printf("No BMS file specified!\n");
-		return 0;
-	}
-
-	BMS* bms = BMS_load(argv[1]);
-
-	if (bms == NULL) {
-		printf("Error trying to play %s\n.", argv[1]);
 		return 0;
 	}
 
@@ -40,6 +34,8 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
+	Play_init(argv[1]);
+
 	TicTocTimer clock = tic();
 	double dt = 0.0;
 	double timer = 0.0;
@@ -49,10 +45,29 @@ int main(int argc, char* argv[]) {
 	while (running) {
 		dt = toc(&clock);
 
-		SDL_Event e;
-		while (SDL_PollEvent(&e) != 0) {
-			if (e.type == SDL_QUIT) {
-				running = 0;
+		SDL_Event event;
+		while (SDL_PollEvent(&event) != 0) {
+			switch (event.type) {
+				case SDL_QUIT:
+					running = 0;
+					break;
+
+				case SDL_KEYUP:
+					switch (event.key.keysym.sym) {
+						case SDLK_UP:
+							Play_change_scroll_speed(100);
+							break;
+
+						case SDLK_DOWN:
+							Play_change_scroll_speed(-100);
+							break;
+
+						default:
+							break;
+					}
+
+				default:
+					break;
 			}
 		}
 
@@ -61,13 +76,14 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 
-		BMS_step(bms, dt);
+		Play_update(dt);
 
 		Graphics_clear();
+
+		Play_draw();
+
 		Graphics_present();
 	}
-
-	BMS_free(bms);
 
 	return 1;
 }

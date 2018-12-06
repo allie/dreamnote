@@ -1,12 +1,10 @@
 #include "graphics.h"
 
-#include <SDL2/SDL.h>
-
 static SDL_Window* window;
 static SDL_Renderer* renderer;
 
 int Graphics_init() {
-	SDL_Window* window = SDL_CreateWindow(
+	window = SDL_CreateWindow(
 		GRAPHICS_WIN_TITLE,
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
@@ -20,7 +18,7 @@ int Graphics_init() {
 		return 0;
 	}
 
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	if (renderer == NULL) {
 		printf("Error creating renderer: %s\n", SDL_GetError());
@@ -32,11 +30,19 @@ int Graphics_init() {
 	return 1;
 }
 
+SDL_Renderer* Graphics_get_renderer() {
+	return renderer;
+}
+
+SDL_Window* Graphics_get_window() {
+	return window;
+}
+
 void Graphics_clear() {
 	if (renderer == NULL)
 		return;
 
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 1);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 }
 

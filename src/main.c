@@ -71,17 +71,9 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		if (timer < 1) {
-			timer += dt;
-			continue;
-		}
-
 		Play_update(dt);
-
 		Graphics_clear();
-
 		Play_draw();
-
 		Graphics_present();
 	}
 

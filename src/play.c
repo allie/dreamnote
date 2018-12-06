@@ -1,3 +1,6 @@
+// This is not intended to be used for the actual game, but
+// just a playground for testing gameplay.
+
 #include "play.h"
 #include "bms.h"
 #include "graphics.h"
@@ -9,6 +12,7 @@ static SDL_Renderer* renderer;
 static BMS* bms;
 static double measure_height = GRAPHICS_WIN_HEIGHT;
 static double lane_width = 80.0;
+static double judge_line = GRAPHICS_WIN_HEIGHT - 100.0;
 static Measure** render_objects;
 
 void Play_init(char* path) {
@@ -33,43 +37,76 @@ void Play_update(double dt) {
 }
 
 void Play_draw() {
+	SDL_Rect rect;
+
+	// Draw lane separations
+	for (int i = 0; i <= 8; i++) {
+		rect.x = i * lane_width - 1;
+		rect.y = 0;
+		rect.w = 2;
+		rect.h = judge_line;
+		SDL_SetRenderDrawColor(renderer, 32, 32, 32, 255);
+		SDL_RenderFillRect(renderer, &rect);
+	}
+
+	// Draw the judge line
+	rect.x = 0;
+	rect.y = judge_line - 8;
+	rect.w = GRAPHICS_WIN_WIDTH;
+	rect.h = 8;
+	SDL_SetRenderDrawColor(renderer, 128, 0, 0, 255);
+	SDL_RenderFillRect(renderer, &rect);
+
 	for (int i = 0; i < bms->total_measures; i++) {
 		Measure* measure = render_objects[i];
 
-		double y = GRAPHICS_WIN_HEIGHT - (i * measure_height) + (bms->current_measure + bms->current_measure_part) * measure_height;
+		double y = judge_line - ((i + 1) * measure_height) + (bms->current_measure + bms->current_measure_part) * measure_height;
 		double x = 0.0;
 
+		// Draw the bar line
+		if (y - 1 <= judge_line) {
+			rect.x = 0;
+			rect.y = y - 1;
+			rect.w = 8 * lane_width;
+			rect.h = 2;
+			SDL_SetRenderDrawColor(renderer, 64, 64, 64, 255);
+			SDL_RenderFillRect(renderer, &rect);
+		}
+
+		// Draw notes
 		for (int j = 0; j < measure->channel_count; j++) {
 			Channel* channel = measure->channels[j];
 
 			for (int k = 0; k < channel->object_count; k++) {
 				Object* object = channel->objects[k];
 
-				SDL_Rect rect;
 				rect.x = x + object->lane * lane_width;
 				rect.y = y + (object->ypos * measure_height) - 8;
 				rect.w = lane_width;
 				rect.h = 8;
 
-				switch (object->lane) {
-					case 0:
-						SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-						break;
+				if (rect.y >= -8 && rect.y <= judge_line - 8) {
+					switch (object->lane) {
+						case 0:
+							SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+							break;
 
-					case 1:
-					case 3:
-					case 5:
-					case 7:
-						SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-						break;
+						case 1:
+						case 3:
+						case 5:
+						case 7:
+							SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+							break;
 
-					case 2:
-					case 4:
-					case 6:
-						SDL_SetRenderDrawColor(renderer, 66, 134, 244, 255);
-						break;
+						case 2:
+						case 4:
+						case 6:
+							SDL_SetRenderDrawColor(renderer, 66, 134, 244, 255);
+							break;
+					}
+
+					SDL_RenderFillRect(renderer, &rect);
 				}
-				SDL_RenderFillRect(renderer, &rect);
 			}
 		}
 	}

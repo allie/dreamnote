@@ -1,7 +1,7 @@
 #include "graphics.h"
 
-static SDL_Window* window;
-static SDL_Renderer* renderer;
+SDL_Window* window;
+SDL_Renderer* renderer;
 
 int Graphics_init() {
 	window = SDL_CreateWindow(
@@ -28,14 +28,6 @@ int Graphics_init() {
 	SDL_RenderSetLogicalSize(renderer, GRAPHICS_WIN_WIDTH, GRAPHICS_WIN_HEIGHT);
 
 	return 1;
-}
-
-SDL_Renderer* Graphics_get_renderer() {
-	return renderer;
-}
-
-SDL_Window* Graphics_get_window() {
-	return window;
 }
 
 void Graphics_clear() {

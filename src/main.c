@@ -4,6 +4,7 @@
 #include "play.h"
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <portaudio.h>
@@ -17,6 +18,11 @@ int main(int argc, char* argv[]) {
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		printf("SDL_Init error: %s\n", SDL_GetError());
+		return 0;
+	}
+
+	if (IMG_Init(IMG_INIT_PNG) == 0) {
+		printf("IMG_Init error: %s\n", IMG_GetError());
 		return 0;
 	}
 
@@ -38,7 +44,6 @@ int main(int argc, char* argv[]) {
 
 	TicTocTimer clock = tic();
 	double dt = 0.0;
-	double timer = 0.0;
 
 	int running = 1;
 

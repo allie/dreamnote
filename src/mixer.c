@@ -155,8 +155,15 @@ int Mixer_init(int rate, int buffer) {
 		channels[i] = NULL;
 	}
 
+	// Initialize PortAudio
+	PaError error = Pa_Initialize();
+	if (error != paNoError) {
+		printf("PortAudio error: %s\n", Pa_GetErrorText(error));
+		return 0;
+	}
+
 	// Open the output stream
-	PaError error = Pa_OpenDefaultStream(&stream, 0, 2, paFloat32, sample_rate, buffer_size, Mixer_PACallback, NULL);
+	error = Pa_OpenDefaultStream(&stream, 0, 2, paFloat32, sample_rate, buffer_size, Mixer_PACallback, NULL);
 	if (error != paNoError) {
 		printf("PortAudio error: %s\n", Pa_GetErrorText(error));
 		return 0;

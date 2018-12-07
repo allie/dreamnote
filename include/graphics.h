@@ -2,6 +2,7 @@
 #define GRAPHICS_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 #define GRAPHICS_WIN_TITLE "DreamNote"
 #define GRAPHICS_WIN_WIDTH 800

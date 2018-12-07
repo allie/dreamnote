@@ -3,11 +3,9 @@
 #include "mixer.h"
 #include "play.h"
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <portaudio.h>
+#include <SDL2/SDL.h>
 #include "tictoc/tictoc.h"
 
 int main(int argc, char* argv[]) {
@@ -16,23 +14,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-		printf("SDL_Init error: %s\n", SDL_GetError());
-		return 0;
-	}
-
-	if (IMG_Init(IMG_INIT_PNG) == 0) {
-		printf("IMG_Init error: %s\n", IMG_GetError());
-		return 0;
-	}
-
 	if (!Graphics_init()) {
-		return 0;
-	}
-
-	PaError error = Pa_Initialize();
-	if (error != paNoError) {
-		printf("PortAudio error: %s\n", Pa_GetErrorText(error));
 		return 0;
 	}
 

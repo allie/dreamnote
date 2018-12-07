@@ -4,6 +4,16 @@ SDL_Window* window;
 SDL_Renderer* renderer;
 
 int Graphics_init() {
+	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+		printf("SDL_Init error: %s\n", SDL_GetError());
+		return 0;
+	}
+
+	if (IMG_Init(IMG_INIT_PNG) == 0) {
+		printf("IMG_Init error: %s\n", IMG_GetError());
+		return 0;
+	}
+
 	window = SDL_CreateWindow(
 		GRAPHICS_WIN_TITLE,
 		SDL_WINDOWPOS_UNDEFINED,

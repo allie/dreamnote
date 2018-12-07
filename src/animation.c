@@ -57,7 +57,7 @@ void Animation_pause(Animation* animation) {
 }
 
 // Stop the animation and reset the frame to 0
-void Animation_pause(Animation* animation) {
+void Animation_stop(Animation* animation) {
 	if (animation == NULL) {
 		return;
 	}
@@ -89,7 +89,9 @@ void Animation_update(Animation* animation, double dt) {
 		animation->current_frame = ++animation->current_frame % animation->total_frames;
 
 		// If frame wrapped around and loop is disabled, stop the animation
-		animation->playing = 0;
+		if (!animation->loop && animation->current_frame == 0) {
+			animation->playing = 0;
+		}
 	}
 }
 
@@ -100,18 +102,21 @@ void Animation_draw(Animation* animation, int x, int y) {
 		return;
 	}
 
+	// Source rectangle
 	SDL_Rect src;
 	src.x = animation->current_frame * animation->frame_width;
 	src.y = 0;
-	src.w = src.x + animation->frame_width;
+	src.w = animation->frame_width;
 	src.h = animation->height;
 
+	// Destination rectangle
 	SDL_Rect dst;
 	dst.x = x;
 	dst.y = y;
 	dst.w = animation->frame_width;
 	dst.h = animation->height;
 
+	// Draw to the screen
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderCopy(renderer, animation->texture, &src, &dst);
 }

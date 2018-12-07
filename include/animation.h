@@ -20,7 +20,7 @@ typedef struct {
 Animation* Animation_load_from_file(const char* path, int total_frames, int frame_width, double frame_duration, int loop, int hide_when_stopped);
 void Animation_play(Animation* animation);
 void Animation_pause(Animation* animation);
-void Animtaion_stop(Animation* animation);
+void Animation_stop(Animation* animation);
 void Animation_update_all(double dt);
 void Animation_update(Animation* animation, double dt);
 void Animation_draw(Animation* animation, int x, int y);

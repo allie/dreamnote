@@ -5,19 +5,21 @@
 #include "bms.h"
 #include "graphics.h"
 #include "util.h"
+#include "animation.h"
 
 #include <SDL2/SDL.h>
 
-static SDL_Renderer* renderer;
 static BMS* bms;
-static double measure_height = GRAPHICS_WIN_HEIGHT;
+static double measure_height = GRAPHICS_WIN_HEIGHT * 2;
 static double lane_width = 80.0;
 static double judge_line = GRAPHICS_WIN_HEIGHT - 100.0;
 static Measure** render_objects;
+static Animation* bombs[8];
+static SDL_Rect bomb_positions[8];
+
+extern SDL_Renderer* renderer;
 
 void Play_init(char* path) {
-	renderer = Graphics_get_renderer();
-
 	bms = BMS_load(path);
 
 	if (bms == NULL) {
@@ -26,6 +28,13 @@ void Play_init(char* path) {
 	}
 
 	render_objects = BMS_get_renderable_objects(bms);
+
+	// Load bomb animations
+	for (int i = 0; i < 8; i++) {
+		bombs[i] = Animation_load_from_file("assets/animations/bomb.png", 16, 128, 1/60.0, 0, 1);
+		bomb_positions[i].x = i * lane_width + (lane_width / 2.0) - (bombs[i]->frame_width / 2.0);
+		bomb_positions[i].y = judge_line - 4 - bombs[i]->height / 2.0;
+	}
 }
 
 void Play_change_scroll_speed(int diff) {
@@ -34,6 +43,7 @@ void Play_change_scroll_speed(int diff) {
 
 void Play_update(double dt) {
 	BMS_step(bms, dt);
+	Animation_update_all(dt);
 }
 
 void Play_draw() {
@@ -107,7 +117,16 @@ void Play_draw() {
 
 					SDL_RenderFillRect(renderer, &rect);
 				}
+
+				if (rect.y >= judge_line - 8 && rect.y <= GRAPHICS_WIN_HEIGHT) {
+					Animation_stop(bombs[object->lane]);
+					Animation_play(bombs[object->lane]);
+				}
 			}
 		}
+	}
+
+	for (int i = 0; i < 8; i++) {
+		Animation_draw(bombs[i], bomb_positions[i].x, bomb_positions[i].y);
 	}
 }

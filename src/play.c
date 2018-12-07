@@ -11,7 +11,7 @@
 
 static BMS* bms;
 static double measure_height = GRAPHICS_WIN_HEIGHT * 2;
-static double lane_width = 80.0;
+static double lane_width = 60.0;
 static double judge_line = GRAPHICS_WIN_HEIGHT - 100.0;
 static Measure** render_objects;
 static Animation* bombs[8];

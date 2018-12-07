@@ -1,12 +1,16 @@
 #include "mixer.h"
 
 #include <stdio.h>
-#include <portaudio.h>
 #include <sndfile.h>
 #include <samplerate.h>
+#include <soundio/soundio.h>
 
 #define NUM_CHANNELS 2048
 #define SAMPLE_RATE 44100
+
+struct SoundIo* soundio = NULL;
+struct SoundIoDevice* device = NULL;
+struct SoundIoOutStream* outstream = NULL;
 
 typedef struct {
 	float* data;
@@ -15,7 +19,6 @@ typedef struct {
 	int finished;
 } Channel;
 
-static PaStream* stream = NULL;
 static Channel* channels[NUM_CHANNELS];
 static int sample_rate;
 static int buffer_size;
@@ -51,23 +54,38 @@ static float mix_samples() {
 		sample = -1.0f;
 	}
 
-	// printf("%f\n", sample);
-
 	return sample;
 }
 
-// PortAudio callback
-static int Mixer_PACallback(const void* input, void* output, unsigned long frame_count,
-	const PaStreamCallbackTimeInfo* time_info, PaStreamCallbackFlags status_flags, void* user_data) {
-	float* out = (float*)output;
+// SoundIo callback
+static void write_callback(struct SoundIoOutStream* outstream, int frame_count_min, int frame_count_max) {
+	const struct SoundIoChannelLayout* layout = &outstream->layout;
+	struct SoundIoChannelArea* areas = NULL;
+	int frames_left = frame_count_max;
+	int error = 0;
 
-	// For each frame, play back two mixed samples (one per stereo channel)
-	for (int i = 0; i < frame_count; i++) {
-		*out++ = mix_samples(); // Left
-		*out++ = mix_samples(); // Right
+	while (frames_left > 0) {
+		int frame_count = frames_left;
+
+		error = soundio_outstream_begin_write(outstream, &areas, &frame_count);
+		if (error) {
+            printf("SoundIo error: %s\n", soundio_strerror(error));
+            exit(1);
+        }
+
+        if (frame_count == 0) {
+        	break;
+        }
+
+        for (int i = 0; i < frame_count; i++) {
+			for (int j = 0; j < layout->channel_count; j++) {
+				float *ptr = (float*)(areas[j].ptr + areas[j].step * i);
+				*ptr = mix_samples();
+			}
+        }
+
+        frames_left -= frame_count;
 	}
-
-	return 0;
 }
 
 int Mixer_load_file(const char* path, float** buffer, size_t* size) {
@@ -85,8 +103,8 @@ int Mixer_load_file(const char* path, float** buffer, size_t* size) {
 	data.src_ratio = SAMPLE_RATE / (double)info.samplerate;
 	data.input_frames = info.frames;
 	data.output_frames = (int)(info.frames * data.src_ratio) + 1;
-	float* input_buffer = malloc(sizeof(float) * info.frames * info.channels);
-	data.data_out = malloc(sizeof(float) * data.output_frames * info.channels);
+	float* input_buffer = calloc(info.frames * info.channels, sizeof(float));
+	data.data_out = calloc(data.output_frames * info.channels, sizeof(float));
 
 	// Read the audio data from the file
 	sf_count_t items_read = sf_read_float(file, input_buffer, info.frames * info.channels);
@@ -114,7 +132,7 @@ int Mixer_load_file(const char* path, float** buffer, size_t* size) {
 
 	// Convert mono to stereo if necessary
 	if (info.channels == 1) {
-		float* stereo = malloc(sizeof(float) * *size);
+		float* stereo = calloc(*size, sizeof(float));
 
 		for (int i = 0; i < data.output_frames_gen; i++) {
 			stereo[i * 2] = data.data_out[i];
@@ -155,18 +173,51 @@ int Mixer_init(int rate, int buffer) {
 		channels[i] = NULL;
 	}
 
-	// Open the output stream
-	PaError error = Pa_OpenDefaultStream(&stream, 0, 2, paFloat32, sample_rate, buffer_size, Mixer_PACallback, NULL);
-	if (error != paNoError) {
-		printf("PortAudio error: %s\n", Pa_GetErrorText(error));
+	// Set up SoundIo
+	soundio = soundio_create();
+	if (!soundio) {
+		printf("Could not initialize SoundIo.\n");
+		return 0;
+    }
+
+    int error = soundio_connect(soundio);
+	if (error) {
+    	printf("Could not connect to SoundIo: %s\n", soundio_strerror(error));
+    	return 0;
+	}
+
+    soundio_flush_events(soundio);
+
+    device = soundio_get_output_device(soundio, soundio_default_output_device_index(soundio));
+	if (!device) {
+		printf("Could not get SoundIo device.\n");
 		return 0;
 	}
 
-	// Start the stream
-	error = Pa_StartStream(stream);
-	if (error != paNoError) {
-		printf("PortAudio error: %s\n", Pa_GetErrorText(error));
+	outstream = soundio_outstream_create(device);
+	if (!outstream) {
+		printf("Could not get SoundIo out stream.\n");
 		return 0;
+	}
+	outstream->format = SoundIoFormatFloat32NE;
+	outstream->sample_rate = sample_rate;
+	outstream->software_latency = buffer_size;
+	outstream->write_callback = write_callback;
+
+	error = soundio_outstream_open(outstream);
+	if (error) {
+		printf("Could not open SoundIo out stream: %s", soundio_strerror(error));
+		return 1;
+	}
+
+	if (outstream->layout_error) {
+		printf("SoundIo layout error: %s\n", soundio_strerror(outstream->layout_error));
+	}
+
+	error = soundio_outstream_start(outstream);
+	if (error) {
+		printf("Could not start SoundIo out stream: %s\n", soundio_strerror(error));
+		return 1;
 	}
 
 	return 1;

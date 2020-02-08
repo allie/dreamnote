@@ -16,7 +16,7 @@ typedef struct {
 } Channel;
 
 static PaStream* stream = NULL;
-static Channel* channels[NUM_CHANNELS];
+static Channel channels[NUM_CHANNELS];
 static int sample_rate;
 static int buffer_size;
 // static int state = MIXER_PLAYING;
@@ -28,16 +28,16 @@ static float mix_samples() {
 
 	// Sum up all channels
 	for (int i = 0; i < NUM_CHANNELS; i++) {
-		if (channels[i] == NULL || channels[i]->finished) {
+		if (channels[i].finished) {
 			continue;
 		}
 
-		sample += channels[i]->data[channels[i]->index];
+		sample += channels[i].data[channels[i].index];
 
-		channels[i]->index++;
+		channels[i].index++;
 
-		if (channels[i]->index == channels[i]->size) {
-			channels[i]->finished = 1;
+		if (channels[i].index == channels[i].size) {
+			channels[i].finished = 1;
 		}
 	}
 
@@ -50,8 +50,6 @@ static float mix_samples() {
 	} else if (sample < -1.0f) {
 		sample = -1.0f;
 	}
-
-	// printf("%f\n", sample);
 
 	return sample;
 }
@@ -148,11 +146,10 @@ int Mixer_init(int rate, int buffer) {
 
 	// Set all channels to null
 	for (int i = 0; i < NUM_CHANNELS; i++) {
-		if (channels[i] != NULL) {
-			free(channels[i]);
-		}
-
-		channels[i] = NULL;
+		channels[i].data = NULL;
+		channels[i].size = 0;
+		channels[i].index = 0;
+		channels[i].finished = 1;
 	}
 
 	// Initialize PortAudio
@@ -185,22 +182,10 @@ int Mixer_init(int rate, int buffer) {
 int Mixer_add(float* data, size_t size) {
 	int channel = -1;
 
-	// Clean up finished channels
-	// TODO: this should be rethought so we don't have to wait for a new channel
-	// to be added in order to free channels. Freeing from within the callback isn't
-	// feasible, so perhaps try kicking off another thread to free channels?
+	// Find the first channel that is marked as finished (ready to accept data)
 	for (int i = 0; i < NUM_CHANNELS; i++) {
-		if (channels[i] != NULL && channels[i]->finished) {
-			free(channels[i]);
-			channels[i] = NULL;
-		}
-	}
-
-	// Look for a free channel
-	for (int i = 0; i < NUM_CHANNELS; i++) {
-		if (channels[i] == NULL) {
+		if (channels[i].finished) {
 			channel = i;
-			break;
 		}
 	}
 
@@ -209,12 +194,11 @@ int Mixer_add(float* data, size_t size) {
 		return -1;
 	}
 
-	// Initialize the channel
-	channels[channel] = calloc(1, sizeof(Channel));
-	channels[channel]->data = data;
-	channels[channel]->size = size;
-	channels[channel]->index = 0;
-	channels[channel]->finished = 0;
+	// Add the new sample
+	channels[channel].data = data;
+	channels[channel].size = size;
+	channels[channel].index = 0;
+	channels[channel].finished = 0;
 
 	return channel;
 }

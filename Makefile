@@ -1,9 +1,10 @@
 CC=clang
-CFLAGS=-std=c99 -g -c -Wall -Werror -D_POSIX_C_SOURCE=200112L -DUNOFFICIAL_MODE -Iinclude -I/usr/local/include -Ilib
+CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -Werror -D_POSIX_C_SOURCE=200112L -DUNOFFICIAL_MODE -Iinclude -I/usr/local/include -Ilib
 LDFLAGS=-lSDL2 -lSDL2_image -lportaudio -lsndfile -lsamplerate -lm
 SOURCES=$(shell find src -name "*.c" -not -name "*.partial.c")
 SOURCES+= lib/tictoc/src/tictoc.c
-OBJECTS=$(SOURCES:.c=.o)
+OBJDIR=build
+OBJECTS=$(SOURCES:%.c=$(OBJDIR)/%.o)
 EXECUTABLE=dreamnote
 OS=$(shell gcc -dumpmachine)
 
@@ -20,9 +21,10 @@ debug: all
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
 
-.c.o:
-	$(CC) $(CFLAGS) $< -o $@
+$(OBJDIR)/%.o: %.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c $(INC) $< -o $@
 
 clean:
 	rm -f $(EXECUTABLE)
-	find . -name "*.o" -print0 | xargs -0 rm -rf
+	rm -rf $(OBJDIR)

@@ -92,6 +92,7 @@ typedef struct {
 // A channel object
 typedef struct {
 	int id;
+	int visible;
 	int activated;
 	double ypos;
 	int lane;
@@ -154,6 +155,7 @@ typedef struct {
 	int total_measures;
 	double current_bpm;
 	double mps;
+	long measure_duration;
 	int format;
 	int lane_channels[1295];
 } BMS;

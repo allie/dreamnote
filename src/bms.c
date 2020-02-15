@@ -329,7 +329,6 @@ static int parse_line(BMS* bms, char* command) {
 		// Extract the channel number
 		char channel_str[] = {command[4], command[5], '\0'};
 		long channel_num = strtol(channel_str, NULL, 36);
-		// printf("%ld\n", channel_num);
 
 		// Extract the message
 		char* message = command + strlen("#xxxyy:");
@@ -435,10 +434,10 @@ static int parse_line(BMS* bms, char* command) {
 
 				bms->measures[measure_num]->channels[channel_num]->objects[i] = malloc(sizeof(Object));
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->id = (int)id;
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->visible = (int)id != 0;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->activated = 0;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->ypos = 0.0;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->lane = bms->lane_channels[channel_num];
-				printf("Channel %ld, lane %d\n", channel_num, bms->measures[measure_num]->channels[channel_num]->objects[i]->lane);
 			}
 		}
 
@@ -636,7 +635,6 @@ BMS* BMS_load(const char* path) {
 
 // Process one logical step of a BMS chart
 void BMS_step(BMS* bms, long dt) {
-	// printf("%lf\n", ((double)dt / (double)1E9));
 	bms->elapsed += dt;
 
 	double last_measure = bms->current_actual_measure;
@@ -723,23 +721,27 @@ void BMS_step(BMS* bms, long dt) {
 
 // Returns all renderable objects (notes) for the whole chart
 Measure** BMS_get_renderable_objects(BMS* bms) {
+	// Create a structure with the same number of measures
 	Measure** measures = calloc(bms->total_measures, sizeof(Measure*));
-	int current_index = 0;
 
+	// Note: we keep a secondary counter m (measure index), because oftentimes charts
+	// will begin on measure 1 with a nonexistent measure 0, and we want to skip
+	// measures that don't exist like we do in the step logic.
+	int m = 0;
 	for (int i = 0; i < bms->measure_count; i++) {
 		if (bms->measures[i] == NULL) {
 			continue;
 		}
 
 		// Create a new measure in the output array
-		measures[current_index] = calloc(1, sizeof(Measure));
+		measures[m] = calloc(1, sizeof(Measure));
 
 		// Count the visible channels
-		int visible[1400];
-		int visible_count = 0;
+		int visible_channels[1400];
+		int visible_channel_count = 0;
 
 		for (int j = 0; j < 1400; j++) {
-			visible[j] = -1;
+			visible_channels[j] = -1;
 		}
 
 		for (int j = 0; j < bms->measures[i]->channel_count; j++) {
@@ -748,30 +750,71 @@ Measure** BMS_get_renderable_objects(BMS* bms) {
 			}
 
 			if (is_visible_channel(j)) {
-				visible[visible_count++] = j;
-				printf("%d\n", j);
+				visible_channels[visible_channel_count++] = j;
 			}
 		}
 
 		// Record the number of visible channels
-		measures[current_index]->channel_count = visible_count;
+		measures[m]->channel_count = visible_channel_count;
+
+		// Don't do anything for this measure if there are no visible channels
+		if (visible_channel_count == 0) {
+			m++;
+			continue;
+		}
 
 		// Allocate channels to the measure for every visible channel
-		if (visible_count > 0) {
-			measures[current_index]->channels = calloc(visible_count, sizeof(Channel*));
+		measures[m]->channels = calloc(visible_channel_count, sizeof(Channel*));
 
-			// Copy objects to each channel
-			for (int j = 0; j < visible_count; j++) {
-				int v = visible[j];
-				int count = bms->measures[i]->channels[v]->object_count;
-				measures[current_index]->channels[j] = calloc(1, sizeof(Channel));
-				measures[current_index]->channels[j]->object_count = count;
-				measures[current_index]->channels[j]->objects = calloc(count, sizeof(Object*));
-				memcpy(measures[current_index]->channels[j]->objects, bms->measures[i]->channels[v]->objects, count * sizeof(Object*));
+		for (int j = 0; j < visible_channel_count; j++) {
+			// Allocate memory for this visible channel
+			measures[m]->channels[j] = calloc(1, sizeof(Channel));
+
+			// The index of this visible channel in the master data structure
+			int v = visible_channels[j];
+
+			// Count the visible objects in this channel
+			int visible_object_count = 0;
+			int visible_objects[1400];
+
+			for (int k = 0; k < 1400; k++) {
+				visible_objects[k] = -1;
+			}
+
+			for (int k = 0; k < bms->measures[i]->channels[v]->object_count; k++) {
+				if (bms->measures[i]->channels[v]->objects[k]->visible) {
+					visible_objects[visible_object_count++] = k;
+				}
+			}
+
+			measures[m]->channels[j]->object_count = visible_object_count;
+
+			// Don't do anything for this channel if there are no visible objects
+			if (visible_object_count == 0) {
+				continue;
+			}
+
+			// Allocate enough memory for the returned array of visible objects
+			measures[m]->channels[j]->objects = calloc(visible_object_count, sizeof(Object*));
+
+			// Copy visible objects to returned channel
+			for (int k = 0; k < visible_object_count; k++) {
+				// Allocate memory for this visible object
+				measures[m]->channels[j]->objects[k] = calloc(1, sizeof(Object));
+
+				// Get index of this visible object in the master data structure
+				int o = visible_objects[k];
+
+				// Copy this visible object from the master data structure to the filtered one
+				memcpy(
+					measures[m]->channels[j]->objects[k],
+					bms->measures[i]->channels[v]->objects[o],
+					sizeof(Object)
+				);
 			}
 		}
 
-		current_index++;
+		m++;
 	}
 
 	return measures;

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <time.h>
 
 int iswhitespace(char c) {
 	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -83,4 +84,26 @@ void* remove_null_elements(void* array, size_t elem_size, int* count) {
 // Returns the number of seconds in a measure at the given BPM and metre
 double measure_duration(double bpm, double metre) {
 	return 60.0 / bpm * 4 * metre;
+}
+
+const char* get_extension(const char *file) {
+	const char *dot = strrchr(file, '.');
+	if (!dot || dot == file) {
+		return "";
+	}
+	return dot + 1;
+}
+
+struct timespec timespec_diff(struct timespec start, struct timespec end) {
+	struct timespec temp;
+
+	if ((end.tv_nsec - start.tv_nsec) < 0) {
+		temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+		temp.tv_nsec = 1E9 + end.tv_nsec - start.tv_nsec;
+	} else {
+		temp.tv_sec = end.tv_sec - start.tv_sec;
+		temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+	}
+
+	return temp;
 }

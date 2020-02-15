@@ -1,5 +1,6 @@
 CC=clang
-CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -Werror -D_POSIX_C_SOURCE=200112L -DUNOFFICIAL_MODE -Iinclude -I/usr/local/include -Ilib
+CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -Werror -D_POSIX_C_SOURCE=200112L -DUNOFFICIAL_MODE
+INC=-Iinclude -I/usr/local/include -Ilib
 LDFLAGS=-lSDL2 -lSDL2_image -lportaudio -lsndfile -lsamplerate -lm
 SOURCES=$(shell find src -name "*.c" -not -name "*.partial.c")
 SOURCES+= lib/tictoc/src/tictoc.c

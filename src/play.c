@@ -6,6 +6,7 @@
 #include "graphics.h"
 #include "util.h"
 #include "animation.h"
+#include "input.h"
 
 #include <SDL2/SDL.h>
 
@@ -31,7 +32,7 @@ void Play_init(char* path) {
 
 	// Load bomb animations
 	for (int i = 0; i < 8; i++) {
-		bombs[i] = Animation_load_from_file("assets/animations/bomb.png", 16, 128, 1/60.0, 0, 1);
+		bombs[i] = Animation_load_from_file("assets/animations/bomb.png", 13, 128, 1/60.0, 0, 1);
 		bomb_positions[i].x = i * lane_width + (lane_width / 2.0) - (bombs[i]->frame_width / 2.0);
 		bomb_positions[i].y = judge_line - 4 - bombs[i]->height / 2.0;
 	}
@@ -41,7 +42,7 @@ void Play_change_scroll_speed(int diff) {
 	measure_height += diff;
 }
 
-void Play_update(double dt) {
+void Play_update(long dt) {
 	BMS_step(bms, dt);
 	Animation_update_all(dt);
 }
@@ -50,7 +51,7 @@ void Play_draw() {
 	SDL_Rect rect;
 
 	// Draw lane separations
-	for (int i = 0; i <= 8; i++) {
+	for (int i = 0; i <= (bms->format == FORMAT_PMS ? 9 : 8); i++) {
 		rect.x = i * lane_width - 1;
 		rect.y = 0;
 		rect.w = 2;
@@ -77,7 +78,7 @@ void Play_draw() {
 		if (y - 1 <= judge_line) {
 			rect.x = 0;
 			rect.y = y - 1;
-			rect.w = 8 * lane_width;
+			rect.w = (bms->format == FORMAT_PMS ? 9 : 8) * lane_width;
 			rect.h = 2;
 			SDL_SetRenderDrawColor(renderer, 64, 64, 64, 255);
 			SDL_RenderFillRect(renderer, &rect);
@@ -96,37 +97,72 @@ void Play_draw() {
 				rect.h = 8;
 
 				if (rect.y >= -8 && rect.y <= judge_line - 8) {
-					switch (object->lane) {
-						case 0:
-							SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-							break;
+					switch (bms->format) {
+						case FORMAT_BMS:
+						case FORMAT_BME: {
+							switch (object->lane) {
+								case 0:
+									SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+									break;
 
-						case 1:
-						case 3:
-						case 5:
-						case 7:
-							SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-							break;
+								case 1:
+								case 3:
+								case 5:
+								case 7:
+									SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+									break;
 
-						case 2:
-						case 4:
-						case 6:
-							SDL_SetRenderDrawColor(renderer, 66, 134, 244, 255);
+								case 2:
+								case 4:
+								case 6:
+									SDL_SetRenderDrawColor(renderer, 66, 134, 244, 255);
+									break;
+							}
 							break;
+						}
+
+						case FORMAT_PMS:{
+							switch (object->lane) {
+								case 0:
+								case 8:
+									SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+									break;
+
+								case 1:
+								case 7:
+									SDL_SetRenderDrawColor(renderer, 255, 217, 0, 255);
+									break;
+
+								case 2:
+								case 6:
+									SDL_SetRenderDrawColor(renderer, 38, 255, 0, 255);
+									break;
+
+								case 3:
+								case 5:
+									SDL_SetRenderDrawColor(renderer, 0, 238, 255, 255);
+									break;
+
+								case 4:
+									SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+									break;
+							}
+							break;
+						}
 					}
 
 					SDL_RenderFillRect(renderer, &rect);
 				}
 
-				if (rect.y >= judge_line - 8 && rect.y <= GRAPHICS_WIN_HEIGHT) {
-					Animation_stop(bombs[object->lane]);
-					Animation_play(bombs[object->lane]);
+				if (rect.y >= judge_line - 8 && rect.y <= judge_line + 8) {
+					// Animation_stop(bombs[object->lane]);
+					// Animation_play(bombs[object->lane]);
 				}
 			}
 		}
 	}
 
 	for (int i = 0; i < 8; i++) {
-		Animation_draw(bombs[i], bomb_positions[i].x, bomb_positions[i].y);
+		// Animation_draw(bombs[i], bomb_positions[i].x, bomb_positions[i].y);
 	}
 }

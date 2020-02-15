@@ -27,7 +27,8 @@ Animation* Animation_load_from_file(const char* path, int total_frames, int fram
 	animation->loop = loop;
 	animation->hide_when_stopped = hide_when_stopped;
 	animation->current_frame = 0;
-	animation->frame_timer = 0.0;
+	animation->frame_timer = 0;
+	animation->playing = 0;
 	SDL_QueryTexture(animation->texture, NULL, NULL, NULL, &animation->height);
 
 	// Add the animation to the global animation array
@@ -64,33 +65,35 @@ void Animation_stop(Animation* animation) {
 
 	animation->playing = 0;
 	animation->current_frame = 0;
+	animation->frame_timer = 0;
 }
 
 // Update all animations currently loaded
-void Animation_update_all(double dt) {
+void Animation_update_all(long dt) {
 	for (int i = 0; i < animation_count; i++) {
 		Animation_update(animations[i], dt);
 	}
 }
 
 // Update a particular animation
-void Animation_update(Animation* animation, double dt) {
+void Animation_update(Animation* animation, long dt) {
 	// Do nothing if animation isn't playing
 	if (!animation->playing) {
 		return;
 	}
-
 	// Advance the timer
 	animation->frame_timer += dt;
 
 	// If the frame duration has passed, advance the frame and reset the timer
-	if (animation->frame_timer >= animation->frame_duration) {
+	while (animation->frame_timer >= (animation->frame_duration * 1E9)) {
 		animation->frame_timer -= animation->frame_duration;
 		animation->current_frame = ++animation->current_frame % animation->total_frames;
 
 		// If frame wrapped around and loop is disabled, stop the animation
 		if (!animation->loop && animation->current_frame == 0) {
 			animation->playing = 0;
+			animation->current_frame = 0;
+			animation->frame_timer = 0;
 		}
 	}
 }

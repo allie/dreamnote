@@ -11,7 +11,7 @@ typedef struct {
 	int frame_width;
 	int height;
 	double frame_duration;
-	double frame_timer;
+	long frame_timer;
 	int loop;
 	int playing;
 	int hide_when_stopped;
@@ -21,8 +21,8 @@ Animation* Animation_load_from_file(const char* path, int total_frames, int fram
 void Animation_play(Animation* animation);
 void Animation_pause(Animation* animation);
 void Animation_stop(Animation* animation);
-void Animation_update_all(double dt);
-void Animation_update(Animation* animation, double dt);
+void Animation_update_all(long dt);
+void Animation_update(Animation* animation, long dt);
 void Animation_draw(Animation* animation, int x, int y);
 
 #endif

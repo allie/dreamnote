@@ -3,54 +3,65 @@
 
 #include <stdlib.h>
 
+// Formats
+enum {
+	FORMAT_BMS = 0,
+	FORMAT_BME,
+	FORMAT_BME_FP,
+	FORMAT_PMS,
+	FORMAT_PMS_BME
+};
+
 // Play types
-#define PLAY_SINGLE 1
-#define PLAY_COUPLE 2
-#define PLAY_DOUBLE 3
-#define PLAY_BATTLE 4
+enum {
+	PLAY_SINGLE = 1,
+	PLAY_COUPLE = 2,
+	PLAY_DOUBLE = 3,
+	PLAY_BATTLE = 4
+};
 
 // Common channels
-#define CHANNEL_BGM 0x01
-#define CHANNEL_METRE 0x02
-#define CHANNEL_BPM_CHANGE 0x03
-#define CHANNEL_BGA 0x04
-#define CHANNEL_POOR_CHANGE 0x06
-#define CHANNEL_LAYER 0x07
-#define CHANNEL_EXTENDED_BPM 0x08
-#define CHANNEL_STOP 0x09
+#define CHANNEL_BGM          1
+#define CHANNEL_METRE        2
+#define CHANNEL_BPM_CHANGE   3
+#define CHANNEL_BGA          4
+#define CHANNEL_POOR_CHANGE  6
+#define CHANNEL_LAYER        7
+#define CHANNEL_EXTENDED_BPM 8
+#define CHANNEL_STOP         9
 
-// BMS channels (IIDX-like)
-#define CHANNEL_IIDX_KEY1 0x25
-#define CHANNEL_IIDX_KEY2 0x26
-#define CHANNEL_IIDX_KEY3 0x27
-#define CHANNEL_IIDX_KEY4 0x28
-#define CHANNEL_IIDX_KEY5 0x29
-#define CHANNEL_IIDX_KEY6 0x2C
-#define CHANNEL_IIDX_KEY7 0x2D
-#define CHANNEL_IIDX_SCRATCH 0x2A
+// BMS + BME channels (IIDX-like)
+// 1P turntable
+#define CHANNEL_BMS_1P_SCRATCH 42 // 16
+// 1P keys
+#define CHANNEL_BMS_1P_KEY1    37 // 11
+#define CHANNEL_BMS_1P_KEY2    38 // 12
+#define CHANNEL_BMS_1P_KEY3    39 // 13
+#define CHANNEL_BMS_1P_KEY4    40 // 14
+#define CHANNEL_BMS_1P_KEY5    41 // 15
+#define CHANNEL_BMS_1P_KEY6    44 // 18
+#define CHANNEL_BMS_1P_KEY7    45 // 19
+// 2P keys
+#define CHANNEL_BMS_2P_KEY1    73 // 21
+#define CHANNEL_BMS_2P_KEY2    74 // 22
+#define CHANNEL_BMS_2P_KEY3    75 // 23
+#define CHANNEL_BMS_2P_KEY4    76 // 24
+#define CHANNEL_BMS_2P_KEY5    77 // 25
+#define CHANNEL_BMS_2P_KEY6    80 // 28
+#define CHANNEL_BMS_2P_KEY7    81 // 29
+// 2P turntable
+#define CHANNEL_BMS_2P_SCRATCH 78 // 26
 
 // PMS channels (pop'n-like)
-#define CHANNEL_POPN_BUTTON1 0x11
-#define CHANNEL_POPN_BUTTON2 0x12
-#define CHANNEL_POPN_BUTTON3 0x13
-#define CHANNEL_POPN_BUTTON4 0x14
-#define CHANNEL_POPN_BUTTON5 0x15
-#define CHANNEL_POPN_BUTTON6 0x22
-#define CHANNEL_POPN_BUTTON7 0x23
-#define CHANNEL_POPN_BUTTON8 0x24
-#define CHANNEL_POPN_BUTTON9 0x25
-
-// O2Mania channels
-// Note: this is for O2Mania 1.2. Newer versions will use
-// the IIDX-style keys, determined by the presence of objects
-// in channel 19.
-#define CHANNEL_O2_P1_KEY1 0x16
-#define CHANNEL_O2_P1_KEY2 0x11
-#define CHANNEL_O2_P1_KEY3 0x12
-#define CHANNEL_O2_P1_KEY4 0x13
-#define CHANNEL_O2_P1_KEY5 0x14
-#define CHANNEL_O2_P1_KEY6 0x15
-#define CHANNEL_O2_P1_KEY7 0x18
+#define CHANNEL_PMS_BUTTON1 37
+#define CHANNEL_PMS_BUTTON2 38
+#define CHANNEL_PMS_BUTTON3 39
+#define CHANNEL_PMS_BUTTON4 40
+#define CHANNEL_PMS_BUTTON5 41
+#define CHANNEL_PMS_BUTTON6 74
+#define CHANNEL_PMS_BUTTON7 75
+#define CHANNEL_PMS_BUTTON8 76
+#define CHANNEL_PMS_BUTTON9 77
 
 // Defaults
 #define DEFAULT_PLAYTYPE PLAY_SINGLE
@@ -105,6 +116,7 @@ typedef struct {
 typedef struct {
 	// Info fields
 	char* file;
+	char* extension;
 	char* directory;
 	int play_type;
 	char* genre;
@@ -135,17 +147,19 @@ typedef struct {
 	int measure_count;
 
 	// Helper fields
-	double elapsed;
+	long elapsed;
 	double current_actual_measure;
 	double current_measure_part;
 	int current_measure;
 	int total_measures;
 	double current_bpm;
 	double mps;
+	int format;
+	int lane_channels[1295];
 } BMS;
 
 BMS* BMS_load(const char* path);
-void BMS_step(BMS* bms, double dt);
+void BMS_step(BMS* bms, long dt);
 Measure** BMS_get_renderable_objects(BMS* bms);
 void BMS_free(BMS* bms);
 void BMS_print_info(BMS* bms);

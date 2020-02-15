@@ -146,7 +146,7 @@ int Input_was_pressed(int button) {
 		return 0;
 	}
 
-	return current_state.pressed[button];
+	return !last_state.pressed[button] && current_state.pressed[button];
 }
 
 // Determine whether a particular button index was released between the last update and now
@@ -155,5 +155,5 @@ int Input_was_released(int button) {
 		return 0;
 	}
 
-	return current_state.released[button];
+	return !last_state.released[button] && current_state.released[button];
 }

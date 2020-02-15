@@ -8,7 +8,7 @@
 #include <libgen.h>
 
 // Determines whether a channel number is a WAV channel or not
-static int is_wav_channel(int channel) {
+static inline int is_wav_channel(int channel) {
 	return channel != 0 && // Retired channel
 		(channel < 2 || channel > 14) && // Settings channels
 		channel != 36 && // Reserved channel
@@ -25,7 +25,7 @@ static int is_wav_channel(int channel) {
 }
 
 // Determines whether a channel number is a visible channel or not
-static int is_visible_channel(int channel) {
+static inline int is_visible_channel(int channel) {
 	return (channel >= 37 && channel <= 71) || // 1P visible
 		(channel >= 73 && channel <= 107) || // 2P visible
 		(channel >= 181 && channel <= 215) || // 1P long note
@@ -329,6 +329,7 @@ static int parse_line(BMS* bms, char* command) {
 		// Extract the channel number
 		char channel_str[] = {command[4], command[5], '\0'};
 		long channel_num = strtol(channel_str, NULL, 36);
+		// printf("%ld\n", channel_num);
 
 		// Extract the message
 		char* message = command + strlen("#xxxyy:");
@@ -436,7 +437,8 @@ static int parse_line(BMS* bms, char* command) {
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->id = (int)id;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->activated = 0;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->ypos = 0.0;
-				bms->measures[measure_num]->channels[channel_num]->objects[i]->lane = 0;
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->lane = bms->lane_channels[channel_num];
+				printf("Channel %ld, lane %d\n", channel_num, bms->measures[measure_num]->channels[channel_num]->objects[i]->lane);
 			}
 		}
 
@@ -446,7 +448,55 @@ static int parse_line(BMS* bms, char* command) {
 	return 0;
 }
 
-// Calculate the Y position relative to beginning of the measure and lane number for each note
+// Determine what kind of chart this is, so we know how to render it later
+static void determine_format(BMS* bms) {
+	// BME
+	if (strcmp(bms->extension, "bme") == 0) {
+		bms->format = FORMAT_BME;
+	}
+	// BMS
+	else if (strcmp(bms->extension, "bms") == 0) {
+		bms->format = FORMAT_BMS;
+	}
+	// PMS
+	else if (strcmp(bms->extension, "pms") == 0) {
+		bms->format = FORMAT_PMS;
+	}
+}
+
+static void map_channel_to_lane(BMS* bms, const char* channel, int lane) {
+	bms->lane_channels[strtol(channel, NULL, 36)] = lane;
+}
+
+// Initialize the channel-to-lane lookup table, depending on format
+static void init_lane_channels(BMS* bms) {
+	for (int i = 0; i < 1295; i++) {
+		bms->lane_channels[i] = -1;
+	}
+
+	switch (bms->format) {
+		case FORMAT_BME:
+		case FORMAT_BMS: {
+			// 1P lanes
+			map_channel_to_lane(bms, "16", 0); // 1P scratch
+			map_channel_to_lane(bms, "11", 1); // 1P key 1
+			map_channel_to_lane(bms, "12", 2); // 1P key 2
+			map_channel_to_lane(bms, "13", 3); // 1P key 3
+			map_channel_to_lane(bms, "14", 4); // 1P key 4
+			map_channel_to_lane(bms, "15", 5); // 1P key 5
+			map_channel_to_lane(bms, "18", 6); // 1P key 6
+			map_channel_to_lane(bms, "19", 7); // 1P key 7
+			break;
+		}
+
+		case FORMAT_PMS: {
+		}
+
+		default: break;
+	}
+}
+
+// Calculate the Y position relative to beginning of the measure for each note
 static void calculate_object_positions(BMS* bms) {
 	for (int i = 0; i < bms->measure_count; i++) {
 		if (bms->measures[i] == NULL || bms->measures[i]->channels == NULL) {
@@ -464,49 +514,6 @@ static void calculate_object_positions(BMS* bms) {
 				}
 
 				bms->measures[i]->channels[j]->objects[k]->ypos = 1.0 - (double)k / bms->measures[i]->channels[j]->object_count;
-
-				int lane = 0;
-
-				// TODO: switch on mode hint
-				switch (j) {
-					case CHANNEL_IIDX_KEY1:
-						lane = 1;
-						break;
-
-					case CHANNEL_IIDX_KEY2:
-						lane = 2;
-						break;
-
-					case CHANNEL_IIDX_KEY3:
-						lane = 3;
-						break;
-
-					case CHANNEL_IIDX_KEY4:
-						lane = 4;
-						break;
-
-					case CHANNEL_IIDX_KEY5:
-						lane = 5;
-						break;
-
-					case CHANNEL_IIDX_KEY6:
-						lane = 6;
-						break;
-
-					case CHANNEL_IIDX_KEY7:
-						lane = 7;
-						break;
-
-					case CHANNEL_IIDX_SCRATCH:
-						lane = 0;
-						break;
-
-					default:
-						lane = 0;
-						break;
-				}
-
-				bms->measures[i]->channels[j]->objects[k]->lane = lane;
 			}
 		}
 	}
@@ -538,6 +545,7 @@ BMS* BMS_load(const char* path) {
 
 	// Initialize metadata fields
 	bms->file = strdup(basename(file));
+	bms->extension = strdup(get_extension(file));
 	bms->directory = strdup(dirname(file));
 	bms->play_type = PLAY_SINGLE;
 	bms->genre = DEFAULT_GENRE;
@@ -565,6 +573,12 @@ BMS* BMS_load(const char* path) {
 	bms->bpm_def_count = 0;
 	bms->measures = NULL;
 	bms->measure_count = 0;
+
+	// Determine the format of this chart
+	determine_format(bms);
+
+	// Initialize the channel-to-lane lookup table
+	init_lane_channels(bms);
 
 	// Iterate through each line and parse commands
 	char line[4096] = "";
@@ -603,7 +617,7 @@ BMS* BMS_load(const char* path) {
 	}
 
 	// Initialize helpers
-	bms->elapsed = 0.0;
+	bms->elapsed = 0;
 	bms->current_actual_measure = 0.0;
 	bms->current_measure_part = 0.0;
 	bms->current_measure = 0;
@@ -621,14 +635,15 @@ BMS* BMS_load(const char* path) {
 }
 
 // Process one logical step of a BMS chart
-void BMS_step(BMS* bms, double dt) {
+void BMS_step(BMS* bms, long dt) {
+	// printf("%lf\n", ((double)dt / (double)1E9));
 	bms->elapsed += dt;
 
 	double last_measure = bms->current_actual_measure;
 	int last_measure_index = (int)last_measure;
 	// double last_measure_part = last_measure - last_measure_index;
 
-	bms->current_actual_measure += bms->mps * dt;
+	bms->current_actual_measure += bms->mps * ((double)dt / 1000000000.0);
 	int measure_index = (int)bms->current_actual_measure;
 	bms->current_measure_part = bms->current_actual_measure - measure_index;
 
@@ -734,6 +749,7 @@ Measure** BMS_get_renderable_objects(BMS* bms) {
 
 			if (is_visible_channel(j)) {
 				visible[visible_count++] = j;
+				printf("%d\n", j);
 			}
 		}
 
@@ -770,6 +786,9 @@ void BMS_free(BMS* bms) {
 
 	// Free the file name
 	free(bms->file);
+
+	// Free the extension
+	free(bms->extension);
 
 	// Free the directory name
 	free(bms->directory);

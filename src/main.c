@@ -3,6 +3,7 @@
 #include "input.h"
 #include "mixer.h"
 #include "play.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,13 +30,16 @@ int main(int argc, char* argv[]) {
 
 	Play_init(argv[1]);
 
-	TicTocTimer clock = tic();
-	double dt = 0.0;
+	struct timespec current_time;
+	struct timespec new_time;
+	clock_gettime(CLOCK_MONOTONIC, &current_time);
 
 	int running = 1;
 
 	while (running) {
-		dt = toc(&clock);
+		memcpy(&current_time, &new_time, sizeof(struct timespec));
+		clock_gettime(CLOCK_MONOTONIC, &new_time);
+		struct timespec dt = timespec_diff(current_time, new_time);
 
 		Input_swap_state();
 
@@ -69,7 +73,8 @@ int main(int argc, char* argv[]) {
 
 		Input_write_state();
 
-		Play_update(dt);
+		Play_update(dt.tv_nsec);
+
 		Graphics_clear();
 		Play_draw();
 		Graphics_present();

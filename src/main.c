@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
-#include "tictoc/tictoc.h"
 
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
@@ -37,7 +36,6 @@ int main(int argc, char* argv[]) {
 	int running = 1;
 
 	while (running) {
-		memcpy(&current_time, &new_time, sizeof(struct timespec));
 		clock_gettime(CLOCK_MONOTONIC, &new_time);
 		struct timespec dt = timespec_diff(current_time, new_time);
 
@@ -78,6 +76,8 @@ int main(int argc, char* argv[]) {
 		Graphics_clear();
 		Play_draw();
 		Graphics_present();
+
+		memcpy(&current_time, &new_time, sizeof(struct timespec));
 	}
 
 	return 1;

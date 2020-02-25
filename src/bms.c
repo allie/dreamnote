@@ -489,6 +489,16 @@ static void init_lane_channels(BMS* bms) {
 		}
 
 		case FORMAT_PMS: {
+			// popn buttons 1-9
+			map_channel_to_lane(bms, "11", 0);
+			map_channel_to_lane(bms, "12", 1);
+			map_channel_to_lane(bms, "13", 2);
+			map_channel_to_lane(bms, "14", 3);
+			map_channel_to_lane(bms, "15", 4);
+			map_channel_to_lane(bms, "22", 5);
+			map_channel_to_lane(bms, "23", 6);
+			map_channel_to_lane(bms, "24", 7);
+			map_channel_to_lane(bms, "25", 8);
 		}
 
 		default: break;

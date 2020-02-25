@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -Werror -D_POSIX_C_SOURCE=200112L -DUNOFFICIAL_MODE
+CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -Werror -D_POSIX_C_SOURCE=200112L -DUNOFFICIAL_MODE -O2
 INC=-Iinclude -I/usr/local/include
 LDFLAGS=-lSDL2 -lSDL2_image -lportaudio -lsndfile -lsamplerate -lm
 SOURCES=$(shell find src -name "*.c" -not -name "*.partial.c")

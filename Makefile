@@ -1,7 +1,7 @@
 CC=clang
-CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -Werror -D_POSIX_C_SOURCE=200112L -DUNOFFICIAL_MODE -O2
+CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -D_POSIX_C_SOURCE=200112L
 INC=-Iinclude -I/usr/local/include
-LDFLAGS=-lSDL2 -lSDL2_image -lportaudio -lsndfile -lsamplerate -lm
+LDFLAGS=-lSDL2 -lGLEW -lportaudio -lsndfile -lsamplerate -lm -framework OpenGL
 SOURCES=$(shell find src -name "*.c" -not -name "*.partial.c")
 OBJDIR=build
 OBJECTS=$(SOURCES:%.c=$(OBJDIR)/%.o)

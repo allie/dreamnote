@@ -15,6 +15,13 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
+	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+		printf("SDL_Init error: %s\n", SDL_GetError());
+		return 0;
+	}
+
+	Play_init(argv[1]);
+
 	if (!Graphics_init()) {
 		return 0;
 	}
@@ -27,13 +34,12 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	Play_init(argv[1]);
-
 	struct timespec current_time;
 	struct timespec new_time;
 	clock_gettime(CLOCK_MONOTONIC, &current_time);
 
 	int running = 1;
+	int loop_counter = 0;
 
 	while (running) {
 		clock_gettime(CLOCK_MONOTONIC, &new_time);
@@ -73,12 +79,13 @@ int main(int argc, char* argv[]) {
 
 		Play_update(dt.tv_nsec);
 
-		Graphics_clear();
-		Play_draw();
-		Graphics_present();
-
 		memcpy(&current_time, &new_time, sizeof(struct timespec));
+
+		printf("\rMain loop: %d, Render: %d", loop_counter++, Graphics_get_render_counter());
 	}
+
+	Graphics_destroy();
+	SDL_Quit();
 
 	return 1;
 }

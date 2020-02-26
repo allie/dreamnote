@@ -2,7 +2,7 @@
 #include "graphics.h"
 #include "util.h"
 
-static Animation** animations = NULL;
+/*static Animation** animations = NULL;
 static int animation_count = 0;
 
 extern SDL_Renderer* renderer;
@@ -123,4 +123,5 @@ void Animation_draw(Animation* animation, int x, int y) {
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderCopy(renderer, animation->texture, &src, &dst);
 }
+*/
 

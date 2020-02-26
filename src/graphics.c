@@ -1,19 +1,12 @@
 #include "graphics.h"
+#include "play.h"
 
-SDL_Window* window;
-SDL_Renderer* renderer;
+static SDL_Window* window;
+static SDL_GLContext context;
+static SDL_Thread* render_thread;
+static int running, render_counter;
 
 int Graphics_init() {
-	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-		printf("SDL_Init error: %s\n", SDL_GetError());
-		return 0;
-	}
-
-	if (IMG_Init(IMG_INIT_PNG) == 0) {
-		printf("IMG_Init error: %s\n", IMG_GetError());
-		return 0;
-	}
-
 	window = SDL_CreateWindow(
 		GRAPHICS_WIN_TITLE,
 		SDL_WINDOWPOS_UNDEFINED,
@@ -28,34 +21,52 @@ int Graphics_init() {
 		return 0;
 	}
 
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
-	if (renderer == NULL) {
-		printf("Error creating renderer: %s\n", SDL_GetError());
-		return 0;
-	}
-
-	SDL_RenderSetLogicalSize(renderer, GRAPHICS_WIN_WIDTH, GRAPHICS_WIN_HEIGHT);
+	render_thread = SDL_CreateThread(Graphics_thread, "Render", NULL);
 
 	return 1;
 }
 
-void Graphics_clear() {
-	if (renderer == NULL)
-		return;
+int Graphics_thread(void* data) {
+	running = 1;
 
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	SDL_RenderClear(renderer);
+	context = SDL_GL_CreateContext(window);
+
+	if (context == NULL) {
+		printf("Error creating OpenGL context: %s\n", SDL_GetError());
+		return 0;
+	}
+
+	// setting the projection matrix to match screen size is a temporary fix, move to using proper coords later
+	glOrtho(0, GRAPHICS_WIN_WIDTH, GRAPHICS_WIN_HEIGHT, 0, -1, 1);
+	if (SDL_GL_SetSwapInterval(-1) == -1) {
+		SDL_GL_SetSwapInterval(1);
+	}
+	glClearColor(0.f, 0.f, 0.f, 1.f);
+
+	while (running) {
+		Graphics_clear();
+		Play_draw();
+		Graphics_present();
+		render_counter++;
+	}
+	return 1;
+}
+
+void Graphics_clear() {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void Graphics_present() {
-	if (renderer == NULL)
-		return;
-
-	SDL_RenderPresent(renderer);
+	SDL_GL_SwapWindow(window);
 }
 
 void Graphics_destroy() {
-	SDL_DestroyRenderer(renderer);
+	running = 0;
+	SDL_WaitThread(render_thread, NULL);
+	SDL_GL_DeleteContext(context);
 	SDL_DestroyWindow(window);
+}
+
+int Graphics_get_render_counter() {
+	return render_counter;
 }

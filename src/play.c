@@ -68,6 +68,24 @@ void Play_draw() {
 	glColor3ub(128, 0, 0);
 	glRecti(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h);
 
+	// Draw lane beams
+	for (int i = 0; i <= (bms->format == FORMAT_PMS ? 9 : 8); i++) {
+		if (Input_is_down(i)) {
+			rect.x = i * lane_width;
+			rect.y = 0;
+			rect.w = lane_width;
+			rect.h = judge_line - 8;
+			glBegin(GL_POLYGON);
+			glColor3ub(0, 0, 0);
+			glVertex2i(rect.x, rect.y);
+			glVertex2i(rect.x + rect.w, rect.y);
+			glColor3ub(200, 0, 150);
+			glVertex2i(rect.x + rect.w, rect.y + rect.h);
+			glVertex2i(rect.x, rect.y + rect.h);
+			glEnd();
+		}
+	}
+
 	for (int i = 0; i < bms->total_measures; i++) {
 		Measure* measure = render_objects[i];
 

@@ -70,3 +70,7 @@ void Graphics_destroy() {
 int Graphics_get_render_counter() {
 	return render_counter;
 }
+
+void Graphics_reset_render_counter() {
+	render_counter = 0;
+}

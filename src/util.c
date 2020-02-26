@@ -107,3 +107,15 @@ struct timespec timespec_diff(struct timespec start, struct timespec end) {
 
 	return temp;
 }
+
+struct timespec timespec_add_ns(struct timespec time, long ns) {
+	struct timespec temp = time;
+
+	temp.tv_nsec += ns;
+	while (temp.tv_nsec >= 1E9) {
+		temp.tv_nsec -= 1E9;
+		temp.tv_sec++;
+	}
+
+	return temp;
+}

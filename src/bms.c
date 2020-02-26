@@ -195,7 +195,7 @@ static int parse_wav(BMS* bms, char* command) {
 		// Open the file
 		float* buffer = NULL;
 		size_t size = 0;
-		
+
 		if (!Mixer_load_file(bms->wav_defs[id]->file, &buffer, &size)) {
 			printf("Could not open WAV%ld (%s).\n", id, command);
 			return 0;

@@ -17,5 +17,6 @@ void Graphics_clear();
 void Graphics_present();
 void Graphics_destroy();
 int Graphics_get_render_counter();
+void Graphics_reset_render_counter();
 
 #endif

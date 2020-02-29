@@ -162,6 +162,7 @@ typedef struct {
 
 BMS* BMS_load(const char* path);
 void BMS_step(BMS* bms, long dt);
+void BMS_play_button_sound(BMS* bms, int lane);
 Measure** BMS_get_renderable_objects(BMS* bms);
 void BMS_free(BMS* bms);
 void BMS_print_info(BMS* bms);

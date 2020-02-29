@@ -44,6 +44,12 @@ void Play_change_scroll_speed(int diff) {
 
 void Play_update(long dt) {
 	BMS_step(bms, dt);
+
+	for (int i = 0; i <= (bms->format == FORMAT_PMS ? 9 : 8); i++) {
+		if (Input_was_pressed(i)) {
+			BMS_play_button_sound(bms, i);
+		}
+	}
 	//Animation_update_all(dt);
 }
 

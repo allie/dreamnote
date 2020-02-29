@@ -399,13 +399,15 @@ static int parse_line(BMS* bms, char* command) {
 		else {
 			// Resize the channels array if need be
 			old_count = bms->measures[measure_num]->channel_count;
-			bms->measures[measure_num]->channel_count = channel_num + 1;
-			bms->measures[measure_num]->channels = recalloc(
-				bms->measures[measure_num]->channels,
-				sizeof(Channel*),
-				old_count,
-				bms->measures[measure_num]->channel_count
-			);
+			if (old_count <= channel_num) {
+				bms->measures[measure_num]->channel_count = channel_num + 1;
+				bms->measures[measure_num]->channels = recalloc(
+					bms->measures[measure_num]->channels,
+					sizeof(Channel*),
+					old_count,
+					bms->measures[measure_num]->channel_count
+				);
+			}
 
 			// If the channel doesn't exist, create it
 			if (bms->measures[measure_num]->channels[channel_num] == NULL) {
@@ -463,6 +465,31 @@ static void determine_format(BMS* bms) {
 	}
 }
 
+static char* get_channel_for_lane(BMS* bms, int lane) {
+	switch (bms->format) {
+		case FORMAT_BME:
+		case FORMAT_BMS: {
+			// IIDX 1P lanes
+			char* lanes[] = { "16", "11", "12", "13", "14", "15", "18", "19" };
+			if (lane < 0 || lane >= 8) {
+				return "";
+			}
+			return lanes[lane];
+			break;
+		}
+
+		case FORMAT_PMS: {
+			// popn buttons 1-9
+			char* lanes[] = { "11", "12", "13", "14", "15", "22", "23", "24", "25" };
+			if (lane < 0 || lane >= 9) {
+				return "";
+			}
+			return lanes[lane];
+		}
+	}
+	return "";
+}
+
 static void map_channel_to_lane(BMS* bms, const char* channel, int lane) {
 	bms->lane_channels[strtol(channel, NULL, 36)] = lane;
 }
@@ -473,35 +500,8 @@ static void init_lane_channels(BMS* bms) {
 		bms->lane_channels[i] = -1;
 	}
 
-	switch (bms->format) {
-		case FORMAT_BME:
-		case FORMAT_BMS: {
-			// 1P lanes
-			map_channel_to_lane(bms, "16", 0); // 1P scratch
-			map_channel_to_lane(bms, "11", 1); // 1P key 1
-			map_channel_to_lane(bms, "12", 2); // 1P key 2
-			map_channel_to_lane(bms, "13", 3); // 1P key 3
-			map_channel_to_lane(bms, "14", 4); // 1P key 4
-			map_channel_to_lane(bms, "15", 5); // 1P key 5
-			map_channel_to_lane(bms, "18", 6); // 1P key 6
-			map_channel_to_lane(bms, "19", 7); // 1P key 7
-			break;
-		}
-
-		case FORMAT_PMS: {
-			// popn buttons 1-9
-			map_channel_to_lane(bms, "11", 0);
-			map_channel_to_lane(bms, "12", 1);
-			map_channel_to_lane(bms, "13", 2);
-			map_channel_to_lane(bms, "14", 3);
-			map_channel_to_lane(bms, "15", 4);
-			map_channel_to_lane(bms, "22", 5);
-			map_channel_to_lane(bms, "23", 6);
-			map_channel_to_lane(bms, "24", 7);
-			map_channel_to_lane(bms, "25", 8);
-		}
-
-		default: break;
+	for (int i = 0; i < (bms->format == FORMAT_PMS ? 9 : 8); i++) {
+		map_channel_to_lane(bms, get_channel_for_lane(bms, i), i);
 	}
 }
 
@@ -536,6 +536,51 @@ static void calculate_total_measures(BMS* bms) {
 
 		bms->total_measures++;
 	}
+}
+
+// Returns the next object for the specified lane
+static Object* get_next_object_for_lane(BMS* bms, int lane) {
+	int measure_index = (int)bms->current_actual_measure;
+
+	for (int i = measure_index; i < bms->measure_count; i++) {
+		if (bms->measures[i] == NULL) {
+			continue;
+		}
+
+		int channelid = strtol(get_channel_for_lane(bms, lane), NULL, 36);
+
+		if (channelid >= bms->measures[i]->channel_count) {
+			continue;
+		}
+
+		Channel* channel = bms->measures[i]->channels[channelid];
+
+		if (channel == NULL) {
+			continue;
+		}
+
+		// only get object index for starting measure, set 0 otherwise
+		int object_index = i == measure_index ? (int)(bms->current_measure_part * channel->object_count) : 0;
+
+		for (int j = object_index; j < channel->object_count; j++) {
+			Object* object = channel->objects[j];
+
+			if (object == NULL) {
+				printf("Object is null!\n");
+				continue;
+			}
+
+			// Don't process rests
+			if (object->id == 0) {
+				continue;
+			}
+
+			return object;
+		}
+
+	}
+
+	return NULL;
 }
 
 // Parse a BMS chart from a file and load it into a structure
@@ -655,10 +700,14 @@ void BMS_step(BMS* bms, long dt) {
 	int measure_index = (int)bms->current_actual_measure;
 	bms->current_measure_part = bms->current_actual_measure - measure_index;
 
-	while (bms->measures[measure_index] == NULL) {
+	while (measure_index < bms->total_measures && bms->measures[measure_index] == NULL) {
 		bms->current_actual_measure += 1.0;
 		measure_index++;
 		last_measure_index++;
+	}
+
+	if (measure_index >= bms->total_measures) {
+		return;
 	}
 
 	Measure* measure = bms->measures[measure_index];
@@ -691,6 +740,7 @@ void BMS_step(BMS* bms, long dt) {
 		}
 	}
 
+	/*
 	// Process objects in all other channels in the current measure
 	for (int i = 0; i < measure->channel_count; i++) {
 		Channel* channel = measure->channels[i];
@@ -721,11 +771,19 @@ void BMS_step(BMS* bms, long dt) {
 			}
 		}
 	}
+	*/
 
 	// If this is a new measure, recalculate some things
 	if (measure_index > last_measure_index) {
 		bms->current_measure++;
 		bms->mps = 1 / measure_duration(bms->current_bpm, measure->metre);
+	}
+}
+
+void BMS_play_button_sound(BMS* bms, int lane) {
+	Object* object = get_next_object_for_lane(bms, lane);
+	if (object != NULL) {
+		Mixer_add(bms->wav_defs[object->id]->data, bms->wav_defs[object->id]->size);
 	}
 }
 
@@ -977,7 +1035,7 @@ void BMS_print_info(BMS* bms) {
 				printf("\nMeasure %d:\n", i);
 				for (int j = 0; j < bms->measures[i]->channel_count; j++) {
 					if (bms->measures[i]->channels[j] != NULL) {
-						printf("Channel %d: ", j);
+						printf("Channel %d (objects %d): ", j, bms->measures[i]->channels[j]->object_count);
 						for (int k = 0; k < bms->measures[i]->channels[j]->object_count; k++) {
 							if (bms->measures[i]->channels[j]->objects[k] != NULL) {
 								printf("%d ", bms->measures[i]->channels[j]->objects[k]->id);

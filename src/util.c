@@ -47,11 +47,14 @@ void trim(char* str) {
 }
 
 void* recalloc(void* array, size_t elem_size, int old_count, int new_count) {
-	void* new_array = realloc(array, elem_size * new_count);
+	void* new_array = calloc(new_count, elem_size);
 
-	if (new_count > old_count && new_array) {
-		memset((char*)new_array + (old_count * elem_size), 0, (new_count - old_count) * elem_size);
+	if (!new_array) {
+		return 0;
 	}
+
+	memcpy(new_array, array, elem_size * old_count);
+	free(array);
 
 	return new_array;
 }

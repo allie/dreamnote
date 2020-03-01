@@ -1,3 +1,4 @@
+#include "log.h"
 #include "bms.h"
 #include "graphics.h"
 #include "input.h"
@@ -13,13 +14,15 @@ static const int LOOP_RATE_HZ = 250;
 static const int LOOP_TIME_MS = 1000 / LOOP_RATE_HZ;
 
 int main(int argc, char* argv[]) {
+	Log_start("dreamnote.log", LOG_DEBUG, 1);
+
 	if (argc < 2) {
-		printf("No BMS file specified!\n");
+		Log_fatal("No BMS file specified!\n");
 		return 0;
 	}
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-		printf("SDL_Init error: %s\n", SDL_GetError());
+		Log_fatal("SDL_Init error: %s\n", SDL_GetError());
 		return 0;
 	}
 
@@ -47,6 +50,8 @@ int main(int argc, char* argv[]) {
 	int loop_counter = 0;
 	int sleep_time = 0;
 	int rate_timer = loop_last.tv_sec;
+
+	Log_debug("Beginning main thread event loop");
 
 	while (running) {
 		clock_gettime(CLOCK_MONOTONIC, &loop_start);

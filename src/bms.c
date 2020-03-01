@@ -1,5 +1,6 @@
 #include "bms.h"
 #include "mixer.h"
+#include "log.h"
 #include "util.h"
 
 #include <stdlib.h>
@@ -197,7 +198,7 @@ static int parse_wav(BMS* bms, char* command) {
 		size_t size = 0;
 
 		if (!Mixer_load_file(bms->wav_defs[id]->file, &buffer, &size)) {
-			printf("Could not open WAV%ld (%s).\n", id, command);
+			Log_error("Could not open WAV%ld (%s).\n", id, command);
 			return 0;
 		}
 
@@ -566,7 +567,7 @@ static Object* get_next_object_for_lane(BMS* bms, int lane) {
 			Object* object = channel->objects[j];
 
 			if (object == NULL) {
-				printf("Object is null!\n");
+				Log_warn("Object is null!\n");
 				continue;
 			}
 
@@ -725,7 +726,7 @@ void BMS_step(BMS* bms, long dt) {
 		Object* object = channel->objects[object_index];
 
 		if (object == NULL) {
-			printf("Object is null!\n");
+			Log_warn("Object is null!\n");
 			continue;
 		}
 
@@ -754,7 +755,7 @@ void BMS_step(BMS* bms, long dt) {
 		Object* object = channel->objects[object_index];
 
 		if (object == NULL) {
-			printf("Object is null!\n");
+			Log_warn("Object is null!\n");
 			continue;
 		}
 
@@ -977,71 +978,71 @@ void BMS_free(BMS* bms) {
 
 // Print out BMS header data to the console
 void BMS_print_info(BMS* bms) {
-	printf("Play type: %d\n", bms->play_type);
-	printf("Genre    : %s\n", bms->genre);
-	printf("Title    : %s\n", bms->title);
-	printf("Init BPM : %f\n", bms->init_bpm);
-	printf("Rank     : %d\n", bms->rank);
-	printf("Artist   : %s\n", bms->artist);
-	printf("Maker    : %s\n", bms->maker);
+	Log_info("Play type: %d\n", bms->play_type);
+	Log_info("Genre    : %s\n", bms->genre);
+	Log_info("Title    : %s\n", bms->title);
+	Log_info("Init BPM : %f\n", bms->init_bpm);
+	Log_info("Rank     : %d\n", bms->rank);
+	Log_info("Artist   : %s\n", bms->artist);
+	Log_info("Maker    : %s\n", bms->maker);
 
 	// Print subartists
 	for (int i = 0; i < bms->subartist_count; i++) {
 		if (bms->subartists[i] != NULL) {
-			printf("Subartist %d = %s\n", i, bms->subartists[i]);
+			Log_info("Subartist %d = %s\n", i, bms->subartists[i]);
 		}
 	}
 
 	// Print comments
 	for (int i = 0; i < bms->comment_count; i++) {
 		if (bms->comments[i] != NULL) {
-			printf("Comment %d = %s\n", i, bms->comments[i]);
+			Log_info("Comment %d = %s\n", i, bms->comments[i]);
 		}
 	}
 
 	// Wav defs
 	for (int i = 0; i < bms->wav_def_count; i++) {
 		if (bms->wav_defs[i] != NULL) {
-			printf("Wav %d = %s\n", i, bms->wav_defs[i]->file);
+			Log_info("Wav %d = %s\n", i, bms->wav_defs[i]->file);
 		}
 	}
 
 	// BMP defs
 	for (int i = 0; i < bms->bmp_def_count; i++) {
 		if (bms->bmp_defs[i] != NULL) {
-			printf("Bmp %d = %s\n", i, bms->bmp_defs[i]->file);
+			Log_info("Bmp %d = %s\n", i, bms->bmp_defs[i]->file);
 		}
 	}
 
 	// Print text defs
 	for (int i = 0; i < bms->text_def_count; i++) {
 		if (bms->text_defs[i] != NULL) {
-			printf("Text %d = %s\n", i, bms->text_defs[i]);
+			Log_info("Text %d = %s\n", i, bms->text_defs[i]);
 		}
 	}
 
 	// Print BPM defs
 	for (int i = 0; i < bms->bpm_def_count; i++) {
 		if (bms->bpm_defs[i] != 0) {
-			printf("Bpm %d = %f\n", i, bms->bpm_defs[i]);
+			Log_info("Bpm %d = %f\n", i, bms->bpm_defs[i]);
 		}
 	}
 
 	// Print measures
 	if (bms->measures != NULL) {
-		printf("%d measures\n", bms->measure_count);
+		Log_info("%d measures\n", bms->measure_count);
 		for (int i = 0; i < bms->measure_count; i++) {
 			if (bms->measures[i] != NULL) {
-				printf("\nMeasure %d:\n", i);
+				Log_info("\nMeasure %d:\n", i);
 				for (int j = 0; j < bms->measures[i]->channel_count; j++) {
 					if (bms->measures[i]->channels[j] != NULL) {
-						printf("Channel %d (objects %d): ", j, bms->measures[i]->channels[j]->object_count);
+						Log_info("Channel %d (objects %d): ", j, bms->measures[i]->channels[j]->object_count);
 						for (int k = 0; k < bms->measures[i]->channels[j]->object_count; k++) {
 							if (bms->measures[i]->channels[j]->objects[k] != NULL) {
-								printf("%d ", bms->measures[i]->channels[j]->objects[k]->id);
+								Log_info("%d ", bms->measures[i]->channels[j]->objects[k]->id);
 							}
 						}
-						printf("\n");
+						Log_info("\n");
 					}
 				}
 			}

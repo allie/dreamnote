@@ -2,6 +2,7 @@
 // just a playground for testing gameplay.
 
 #include "play.h"
+#include "log.h"
 #include "bms.h"
 #include "graphics.h"
 #include "util.h"
@@ -22,7 +23,7 @@ void Play_init(char* path) {
 	bms = BMS_load(path);
 
 	if (bms == NULL) {
-		printf("Error trying to play %s\n.", path);
+		Log_fatal("Error trying to play %s\n.", path);
 		return;
 	}
 

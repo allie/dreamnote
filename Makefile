@@ -1,7 +1,7 @@
 CC=clang
 CFLAGS=-std=c99 -g -Wno-nullability-completeness -Wall -D_POSIX_C_SOURCE=200112L -fsanitize=address
 INC=-Iinclude -I/usr/local/include
-LDFLAGS=-lSDL2 -lGLEW -lportaudio -lsndfile -lsamplerate -lm -framework OpenGL -fsanitize=address
+LDFLAGS=-lSDL2 -lportaudio -lsndfile -lsamplerate -lm -framework OpenGL -fsanitize=address
 SOURCES=$(shell find src -name "*.c" -not -name "*.partial.c")
 OBJDIR=build
 OBJECTS=$(SOURCES:%.c=$(OBJDIR)/%.o)

@@ -1,4 +1,5 @@
 #include "input.h"
+#include "log.h"
 
 static InputMapping bindings;
 static InputState last_state;
@@ -46,6 +47,8 @@ int Input_init() {
 	}
 
 	Input_set_default_bindings();
+
+	Log_debug("Successfully initialized Input");
 
 	return 1;
 }

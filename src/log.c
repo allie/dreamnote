@@ -3,8 +3,18 @@
 #include <stdarg.h>
 #include <time.h>
 
+static char* log_colors[] = {
+	COLOR_RESET,
+	COLOR_RED_B,
+	COLOR_RED,
+	COLOR_YELLOW,
+	COLOR_BLUE,
+	COLOR_GREEN
+};
+
 static FILE* fp;
 static int current_level;
+static int current_color;
 static int mirror;
 
 static void write_line(const char* prefix, const char* fmt, va_list args) {
@@ -27,7 +37,7 @@ static void write_line(const char* prefix, const char* fmt, va_list args) {
 
 		// Do the same thing in stdout if necessary
 		if (mirror) {
-			printf("[%s] [%s] %s\n", timestamp, prefix, message);
+			printf("[%s] %s[%s] %s%s\n", timestamp, log_colors[current_color], prefix, message, log_colors[0]);
 		}
 	} else {
 		// Write the message with timestamp and prefix to the file
@@ -35,7 +45,7 @@ static void write_line(const char* prefix, const char* fmt, va_list args) {
 
 		// Do the same thing in stdout if necessary
 		if (mirror) {
-			printf("[%s] [%s] %s\n", timestamp, prefix, fmt);
+			printf("[%s] %s[%s] %s%s\n", timestamp, log_colors[current_color], prefix, fmt, log_colors[0]);
 		}
 	}
 }
@@ -67,6 +77,7 @@ void Log_debug(const char* fmt, ...) {
 	if (current_level < LOG_DEBUG) {
 		return;
 	}
+	current_color = LOG_DEBUG;
 
 	va_list args;
 	va_start(args, fmt);
@@ -78,6 +89,7 @@ void Log_info(const char* fmt, ...) {
 	if (current_level < LOG_INFO) {
 		return;
 	}
+	current_color = LOG_INFO;
 
 	va_list args;
 	va_start(args, fmt);
@@ -89,6 +101,7 @@ void Log_warn(const char* fmt, ...) {
 	if (current_level < LOG_WARN) {
 		return;
 	}
+	current_color = LOG_WARN;
 
 	va_list args;
 	va_start(args, fmt);
@@ -100,6 +113,7 @@ void Log_error(const char* fmt, ...) {
 	if (current_level < LOG_ERROR) {
 		return;
 	}
+	current_color = LOG_ERROR;
 
 	va_list args;
 	va_start(args, fmt);
@@ -111,6 +125,7 @@ void Log_fatal(const char* fmt, ...) {
 	if (current_level < LOG_FATAL) {
 		return;
 	}
+	current_color = LOG_FATAL;
 
 	va_list args;
 	va_start(args, fmt);

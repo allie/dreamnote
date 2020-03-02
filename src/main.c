@@ -17,12 +17,12 @@ int main(int argc, char* argv[]) {
 	Log_start("dreamnote.log", LOG_DEBUG, 1);
 
 	if (argc < 2) {
-		Log_fatal("No BMS file specified!\n");
+		Log_fatal("No BMS file specified!");
 		return 0;
 	}
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-		Log_fatal("SDL_Init error: %s\n", SDL_GetError());
+		Log_fatal("SDL_Init error: %s", SDL_GetError());
 		return 0;
 	}
 

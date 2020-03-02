@@ -18,7 +18,7 @@ int Graphics_init() {
 	);
 
 	if (window == NULL) {
-		Log_fatal("Error creating window: %s\n", SDL_GetError());
+		Log_fatal("Error creating window: %s", SDL_GetError());
 		return 0;
 	}
 
@@ -37,7 +37,7 @@ int Graphics_thread(void* data) {
 	context = SDL_GL_CreateContext(window);
 
 	if (context == NULL) {
-		Log_fatal("Error creating OpenGL context: %s\n", SDL_GetError());
+		Log_fatal("Error creating OpenGL context: %s", SDL_GetError());
 		return 0;
 	}
 

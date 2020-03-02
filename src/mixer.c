@@ -75,7 +75,7 @@ int Mixer_load_file(const char* path, float** buffer, size_t* size) {
 	SNDFILE* file = sf_open(path, SFM_READ, &info);
 
 	if (file == NULL) {
-		Log_error("Error opening sound file: %s\n", sf_strerror(file));
+		Log_error("Error opening sound file: %s", sf_strerror(file));
 		return 0;
 	}
 
@@ -91,7 +91,7 @@ int Mixer_load_file(const char* path, float** buffer, size_t* size) {
 	sf_count_t items_read = sf_read_float(file, input_buffer, info.frames * info.channels);
 
 	if (items_read != info.frames * info.channels) {
-		Log_error("Read %lld samples instead of %lld\n!", items_read, info.frames * info.channels);
+		Log_error("Read %lld samples instead of %lld!", items_read, info.frames * info.channels);
 		return 0;
 	}
 
@@ -103,7 +103,7 @@ int Mixer_load_file(const char* path, float** buffer, size_t* size) {
 	int error = src_simple(&data, SRC_SINC_FASTEST, info.channels);
 
 	if (error) {
-		Log_error("Error converting sample rate: %s\n", src_strerror(error));
+		Log_error("Error converting sample rate: %s", src_strerror(error));
 		return 0;
 	}
 
@@ -129,11 +129,11 @@ int Mixer_load_file(const char* path, float** buffer, size_t* size) {
 	}
 	// 0 channels or >2 is not supported right now
 	else {
-		Log_error("Unsupported number of channels.\n");
+		Log_error("Unsupported number of channels.");
 		 return 0;
 	}
 
-	// Log_debug("Chunk loaded and converted: %s, %dhz, %d channels\n", path, info.samplerate, info.channels);
+	// Log_debug("Chunk loaded and converted: %s, %dhz, %d channels", path, info.samplerate, info.channels);
 	return 1;
 }
 
@@ -156,7 +156,7 @@ int Mixer_init(int rate, int buffer) {
 	// Initialize PortAudio
 	PaError error = Pa_Initialize();
 	if (error != paNoError) {
-		Log_fatal("PortAudio error: %s\n", Pa_GetErrorText(error));
+		Log_fatal("PortAudio error: %s", Pa_GetErrorText(error));
 		return 0;
 	}
 
@@ -165,7 +165,7 @@ int Mixer_init(int rate, int buffer) {
 	// Open the output stream
 	error = Pa_OpenDefaultStream(&stream, 0, 2, paFloat32, sample_rate, buffer_size, Mixer_PACallback, NULL);
 	if (error != paNoError) {
-		Log_fatal("PortAudio error: %s\n", Pa_GetErrorText(error));
+		Log_fatal("PortAudio error: %s", Pa_GetErrorText(error));
 		return 0;
 	}
 
@@ -174,7 +174,7 @@ int Mixer_init(int rate, int buffer) {
 	// Start the stream
 	error = Pa_StartStream(stream);
 	if (error != paNoError) {
-		Log_fatal("PortAudio error: %s\n", Pa_GetErrorText(error));
+		Log_fatal("PortAudio error: %s", Pa_GetErrorText(error));
 		return 0;
 	}
 

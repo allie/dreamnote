@@ -24,7 +24,7 @@ void Play_init(char* path) {
 	bms = BMS_load(path);
 
 	if (bms == NULL) {
-		Log_fatal("Error trying to play %s\n.", path);
+		Log_fatal("Error trying to play %s.", path);
 		return;
 	}
 

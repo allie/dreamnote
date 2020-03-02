@@ -96,6 +96,8 @@ typedef struct {
 	int activated;
 	double ypos;
 	int lane;
+	double timing;
+	int judgment;
 } Object;
 
 // An internal representation of a single channel/column.
@@ -162,7 +164,7 @@ typedef struct {
 
 BMS* BMS_load(const char* path);
 void BMS_step(BMS* bms, long dt);
-void BMS_play_button_sound(BMS* bms, int lane);
+void BMS_handle_button_press(BMS* bms, int lane);
 Measure** BMS_get_renderable_objects(BMS* bms);
 void BMS_free(BMS* bms);
 void BMS_print_info(BMS* bms);

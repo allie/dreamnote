@@ -50,7 +50,7 @@ int Graphics_thread(void* data) {
 	}
 	glClearColor(0.f, 0.f, 0.f, 1.f);
 
-	Log_debug("Render thread beginning main loop");
+	Log_debug("Beginning render thread main loop");
 
 	while (running) {
 		Graphics_clear();
@@ -58,6 +58,8 @@ int Graphics_thread(void* data) {
 		Graphics_present();
 		render_counter++;
 	}
+
+	Log_debug("Ended render thread event loop");
 	return 1;
 }
 

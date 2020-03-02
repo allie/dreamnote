@@ -64,6 +64,7 @@ int main(int argc, char* argv[]) {
 		while (SDL_PollEvent(&event) != 0) {
 			switch (event.type) {
 				case SDL_QUIT:
+					Log_info("Initiating shutdown");
 					running = 0;
 					break;
 
@@ -96,6 +97,7 @@ int main(int argc, char* argv[]) {
 
 		memcpy(&loop_last, &loop_start, sizeof(struct timespec));
 
+		/* keep track of and print thread loop rates
 		loop_counter++;
 		if (loop_start.tv_sec >= rate_timer) {
 			printf("\rmain rate: %f, render rate: %f", loop_counter / 3.0, Graphics_get_render_counter() / 3.0);
@@ -104,6 +106,7 @@ int main(int argc, char* argv[]) {
 			Graphics_reset_render_counter();
 			fflush(stdout);
 		}
+		*/
 
 		clock_gettime(CLOCK_MONOTONIC, &loop_end);
 		dt = timespec_diff(loop_end, loop_target);
@@ -117,8 +120,14 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	Log_debug("Ended main thread event loop");
+
+	// destroy input
+	// destroy mixer
 	Graphics_destroy();
+	Play_destroy();
 	SDL_Quit();
+	Log_destroy();
 
 	return 1;
 }

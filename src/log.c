@@ -33,19 +33,19 @@ static void write_line(const char* prefix, const char* fmt, va_list args) {
 		vsnprintf(message, 4096, fmt, args);
 
 		// Write the formatted message with timestamp and prefix to the file
-		fprintf(fp, "[%s] [%s] %s\n", timestamp, prefix, message);
+		fprintf(fp, "[%s] %s: %s\n", timestamp, prefix, message);
 
 		// Do the same thing in stdout if necessary
 		if (mirror) {
-			printf("[%s] %s[%s] %s%s\n", timestamp, log_colors[current_color], prefix, message, log_colors[0]);
+			printf("[%s] %s%s: %s%s\n", timestamp, log_colors[current_color], prefix, message, log_colors[0]);
 		}
 	} else {
 		// Write the message with timestamp and prefix to the file
-		fprintf(fp, "[%s] [%s] %s\n", timestamp, prefix, fmt);
+		fprintf(fp, "[%s] %s: %s\n", timestamp, prefix, fmt);
 
 		// Do the same thing in stdout if necessary
 		if (mirror) {
-			printf("[%s] %s[%s] %s%s\n", timestamp, log_colors[current_color], prefix, fmt, log_colors[0]);
+			printf("[%s] %s%s: %s%s\n", timestamp, log_colors[current_color], prefix, fmt, log_colors[0]);
 		}
 	}
 }
@@ -134,6 +134,7 @@ void Log_fatal(const char* fmt, ...) {
 }
 
 void Log_destroy() {
+	current_color = LOG_OFF;
 	write_line("LOG", "Ending logging session", NULL);
 	fprintf(fp, "\n");
 	fclose(fp);

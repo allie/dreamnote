@@ -20,6 +20,7 @@ static Measure** render_objects;
 //static SDL_Rect bomb_positions[9];
 
 void Play_init(char* path) {
+	Log_debug("Loading BMS file...");
 	bms = BMS_load(path);
 
 	if (bms == NULL) {
@@ -39,6 +40,11 @@ void Play_init(char* path) {
 	*/
 }
 
+void Play_destroy() {
+	BMS_free(bms);
+	Log_debug("Play successfully destroyed");
+}
+
 void Play_change_scroll_speed(int diff) {
 	measure_height += diff;
 }
@@ -48,7 +54,7 @@ void Play_update(long dt) {
 
 	for (int i = 0; i <= (bms->format == FORMAT_PMS ? 9 : 8); i++) {
 		if (Input_was_pressed(i)) {
-			BMS_play_button_sound(bms, i);
+			BMS_handle_button_press(bms, i);
 		}
 	}
 	//Animation_update_all(dt);
@@ -115,6 +121,10 @@ void Play_draw() {
 
 			for (int k = 0; k < channel->object_count; k++) {
 				Object* object = channel->objects[k];
+
+				if (object->activated) {
+					continue;
+				}
 
 				rect.x = x + object->lane * lane_width;
 				rect.y = y + (object->ypos * measure_height) - 8;

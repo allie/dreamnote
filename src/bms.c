@@ -3,6 +3,7 @@
 #include "log.h"
 #include "util.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -441,6 +442,8 @@ static int parse_line(BMS* bms, char* command) {
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->activated = 0;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->ypos = 0.0;
 				bms->measures[measure_num]->channels[channel_num]->objects[i]->lane = bms->lane_channels[channel_num];
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->timing = 0.0;
+				bms->measures[measure_num]->channels[channel_num]->objects[i]->judgment = -1;
 			}
 		}
 
@@ -537,6 +540,59 @@ static void calculate_total_measures(BMS* bms) {
 
 		bms->total_measures++;
 	}
+}
+
+// Returns the nearest object for the specified lane
+static Object* get_nearest_object_for_lane(BMS* bms, int lane) {
+	double closest_timing = -1.0;
+	Object* closest_object = NULL;
+
+	for (int i = 0; i < bms->measure_count; i++) {
+		if (bms->measures[i] == NULL) {
+			continue;
+		}
+
+		int channelid = strtol(get_channel_for_lane(bms, lane), NULL, 36);
+
+		if (channelid >= bms->measures[i]->channel_count) {
+			continue;
+		}
+
+		Channel* channel = bms->measures[i]->channels[channelid];
+
+		if (channel == NULL) {
+			continue;
+		}
+
+		for (int j = 0; j < channel->object_count; j++) {
+			Object* object = channel->objects[j];
+
+			if (object == NULL) {
+				printf("Object is null!\n");
+				continue;
+			}
+
+			// Don't process rests
+			if (object->id == 0) {
+				continue;
+			}
+
+			double object_actual_measure = i + (double)j / channel->object_count;
+			double object_timing = fabs(bms->current_actual_measure - object_actual_measure);
+
+			if (closest_timing < 0 || object_timing <= closest_timing) {
+				if (!object->activated) {
+					object->timing = (bms->current_actual_measure - object_actual_measure) / bms->mps;
+				}
+				closest_timing = object_timing;
+				closest_object = object;
+			} else if (object_timing > closest_timing) {
+				return closest_object;
+			}
+		}
+	}
+
+	return closest_object;
 }
 
 // Returns the next object for the specified lane
@@ -686,6 +742,8 @@ BMS* BMS_load(const char* path) {
 	// Calculate the total actual number of measures
 	calculate_total_measures(bms);
 
+	Log_debug("Loaded BMS \"%s\"", bms->title);
+
 	return bms;
 }
 
@@ -781,9 +839,13 @@ void BMS_step(BMS* bms, long dt) {
 	}
 }
 
-void BMS_play_button_sound(BMS* bms, int lane) {
-	Object* object = get_next_object_for_lane(bms, lane);
+void BMS_handle_button_press(BMS* bms, int lane) {
+	Object* object = get_nearest_object_for_lane(bms, lane);
 	if (object != NULL) {
+		if (!object->activated && object->timing >= -0.200 && object->timing <= 0.200) {
+			Log_debug("Button %d timing: %fms", lane, object->timing * 1000);
+			object->activated = 1;
+		}
 		Mixer_add(bms->wav_defs[object->id]->data, bms->wav_defs[object->id]->size);
 	}
 }
@@ -874,12 +936,17 @@ Measure** BMS_get_renderable_objects(BMS* bms) {
 				// Get index of this visible object in the master data structure
 				int o = visible_objects[k];
 
+				/*
 				// Copy this visible object from the master data structure to the filtered one
 				memcpy(
 					measures[m]->channels[j]->objects[k],
 					bms->measures[i]->channels[v]->objects[o],
 					sizeof(Object)
 				);
+				*/
+
+				// Copy the pointer to the object to the filtered one instead
+				measures[m]->channels[j]->objects[k] = bms->measures[i]->channels[v]->objects[o];
 			}
 		}
 
@@ -974,6 +1041,8 @@ void BMS_free(BMS* bms) {
 
 	// Free the base struct
 	free(bms);
+
+	Log_debug("BMS successfully freed");
 }
 
 // Print out BMS header data to the console

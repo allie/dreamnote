@@ -70,7 +70,13 @@ int main(int argc, char* argv[]) {
 
 				case SDL_KEYDOWN:
 					if (event.key.repeat == 0) {
-						Input_key_pressed(event.key.keysym.scancode);
+						if (event.key.keysym.scancode == SDL_SCANCODE_UP) {
+							Play_change_scroll_speed(100);
+						} else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN) {
+							Play_change_scroll_speed(-100);
+						} else {
+							Input_key_pressed(event.key.keysym.scancode);
+						}
 					}
 					break;
 
